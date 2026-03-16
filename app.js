@@ -1,0 +1,775 @@
+// app.js
+// HTW Generator v0.6.0a - small icon reliability pass
+
+'use strict';
+
+// --- Core globals are now available from separate scripts ---
+
+const cw = getCanvasWrapper();
+const cv = getCanvas();
+const ctx = cv.getContext('2d');
+ctx.imageSmoothingEnabled = false;
+
+function aW() { return getCanvasWidth(); }
+function aH() { return getCanvasHeight(); }
+function cs() { return getCellSizeFromState(S); }
+
+function resizeCanvas() {
+  resizeCanvasToWrapper(cv);
+  ctx.imageSmoothingEnabled = false;
+  redraw();
+}
+
+function redraw() {
+  ctx.fillStyle = '#0D0D0D';
+  ctx.fillRect(0, 0, cv.width, cv.height);
+  if (!S.img) return;
+  if (S.mode === 'effects') renderEffects();
+  else renderGrid();
+}
+
+function vOff(cW, cH) {
+  return getViewOffset(cW, cH, S.vz, S.vpx, S.vpy, aW(), aH());
+}
+
+// --- Grid processing ---
+function processGrid() {
+  if (!S.img) return;
+
+  // For bitmap, grid dimensions are derived from image size, not canvas
+  if (S.mode === 'bitmap') {
+    const c = cs();
+    S.gw = Math.ceil(S.img.naturalWidth / c);
+    S.gh = Math.ceil(S.img.naturalHeight / c);
+  } else {
+    // Icon mode uses canvas size because it always renders a fixed 32x32 grid (see gridIcon)
+    const c = cs();
+    S.gw = Math.max(1, Math.floor(aW() / c));
+    S.gh = Math.max(1, Math.floor(aH() / c));
+  }
+
+  const oc = createOffscreenCanvas(S.gw, S.gh);
+  const ox = oc.getContext('2d');
+  ox.drawImage(S.img, 0, 0, S.gw, S.gh);
+  const id = ox.getImageData(0, 0, S.gw, S.gh);
+  S.grid = S.mode === 'icon' ? gridIcon(id, S.gw, S.gh) : gridBitmap(id, S.gw, S.gh);
+  renderGrid();
+  updateSidebar();
+}
+
+function renderGrid() {
+  if (!S.grid) return;
+  const c = cs(), gw = S.gw, gh = S.gh, { ox, oy } = vOff(gw * c, gh * c);
+  ctx.fillStyle = '#0D0D0D'; ctx.fillRect(0, 0, cv.width, cv.height);
+  ctx.save(); ctx.translate(ox, oy); ctx.scale(S.vz, S.vz);
+  for (let r = 0; r < gh; r++) for (let cc = 0; cc < gw; cc++) {
+    const cell = S.grid[r * gw + cc]; if (!cell) continue;
+    ctx.fillStyle = rgb(cell.bg); ctx.fillRect(cc * c, r * c, c, c);
+    if (cell.shape >= 0) { ctx.fillStyle = rgb(cell.fg); drawShape(ctx, cc * c, r * c, c, cell.shape, cell.lum, cell.ch); }
+  }
+  if (S.mode === 'icon' && S.icon.grid) {
+    ctx.strokeStyle = 'rgba(0,68,253,0.22)'; ctx.lineWidth = 0.5;
+    for (let cc = 0; cc <= gw; cc++) { ctx.beginPath(); ctx.moveTo(cc * c, 0); ctx.lineTo(cc * c, gh * c); ctx.stroke(); }
+    for (let r = 0; r <= gh; r++) { ctx.beginPath(); ctx.moveTo(0, r * c); ctx.lineTo(gw * c, r * c); ctx.stroke(); }
+  }
+  ctx.restore(); updateStatus();
+}
+
+// --- Effects mode ---
+function renderEffects() {
+  const pal = P2[S.fx.palIdx], fg = pal.c[0], bg = pal.c[1];
+  const iw = S.img.naturalWidth, ih = S.img.naturalHeight;
+  const { ox, oy } = vOff(iw, ih);
+  const dw = iw * S.vz, dh = ih * S.vz;
+  ctx.fillStyle = '#0D0D0D'; ctx.fillRect(0, 0, cv.width, cv.height);
+  ctx.save(); ctx.imageSmoothingEnabled = false;
+  const topBake = S.bakeStack.length ? S.bakeStack[S.bakeStack.length - 1] : null;
+  if (topBake) { ctx.drawImage(topBake, ox, oy, dw, dh); }
+  else if (S.fx.colorMode) { ctx.drawImage(S.img, ox, oy, dw, dh); }
+  else { ctx.filter = 'grayscale(1)'; ctx.drawImage(S.img, ox, oy, dw, dh); ctx.filter = 'none'; }
+  ctx.restore();
+
+  const cellSize = DEPTHS[S.fx.depth];           // mother‑grid cell size
+  if (S.fx.checker && S.mask) {
+    const cszS = cellSize * S.vz;
+    for (let my = 0; my < S.mh; my++) for (let mx = 0; mx < S.mw; mx++) {
+      if (!S.mask[my * S.mw + mx]) continue;
+      ctx.fillStyle = rgb(((mx + my) & 1) === 0 ? fg : bg);
+      ctx.fillRect(ox + mx * cszS, oy + my * cszS, cszS, cszS);
+    }
+  }
+  if (S.fx.markers) drawMarkers(ctx, iw, ih, ox, oy, fg, bg, S.fx.ms, S.fx.mc, S.fx.m2c, S.vz);
+  if (S.fx.ml2) drawMarkers(ctx, iw, ih, ox, oy, bg, fg, S.fx.ms + 1, S.fx.mc2, true, S.vz); // layer2 uses ms+1
+  if (S.fx.grid) {
+    const gsz = cellSize * S.vz;
+    ctx.strokeStyle = 'rgba(0,68,253,0.18)'; ctx.lineWidth = 0.5;
+    for (let x = ox; x < ox + dw; x += gsz) { ctx.beginPath(); ctx.moveTo(x, oy); ctx.lineTo(x, oy + dh); ctx.stroke(); }
+    for (let y = oy; y < oy + dh; y += gsz) { ctx.beginPath(); ctx.moveTo(ox, y); ctx.lineTo(ox + dw, y); ctx.stroke(); }
+  }
+  updateStatus();
+  updateSidebar();
+}
+
+// New grid‑aligned marker placement
+function drawMarkers(ctx, iw, ih, ox, oy, fg, bg, seed, count, twoColor, vz) {
+  const cellSize = DEPTHS[S.fx.depth];
+  const cols = Math.floor(iw / cellSize);
+  const rows = Math.floor(ih / cellSize);
+  if (cols < 3 || rows < 3) return;
+
+  // Build list of all cell centres (excluding border cells)
+  const candidates = [];
+  for (let r = 1; r < rows - 1; r++) {
+    for (let c = 1; c < cols - 1; c++) {
+      candidates.push([c, r]);
+    }
+  }
+
+  // Deterministic shuffle based on seed
+  let rng = seed;
+  const rand = () => { rng = (rng * 1664525 + 1013904223) & 0xFFFFFFFF; return (rng >>> 0) / 0x100000000; };
+  for (let i = candidates.length - 1; i > 0; i--) {
+    const j = Math.floor(rand() * (i + 1));
+    [candidates[i], candidates[j]] = [candidates[j], candidates[i]];
+  }
+
+  const n = Math.min(count, candidates.length);
+  const markerSize = Math.max(2, Math.floor(cellSize * 0.6)); // fits inside cell
+  const msS = markerSize * vz;
+
+  for (let i = 0; i < n; i++) {
+    const [cx, cy] = candidates[i];
+    const color = (twoColor && (i & 1)) ? bg : fg;
+    ctx.fillStyle = rgb(color);
+    const px = ox + (cx + 0.5) * cellSize * vz - msS / 2;
+    const py = oy + (cy + 0.5) * cellSize * vz - msS / 2;
+    ctx.fillRect(px, py, msS, msS);
+  }
+}
+
+// --- Icon engine (unchanged) ---
+function gridIcon(id, gw, gh) {
+  const pal = P2[S.fx.palIdx];
+  const fg = pal.c[0];
+  const bg = pal.c[1];
+
+  const smartGrid = generateSmartIconGrid(S.img, {
+    fitMode: S.icon.fitMode,
+    invert: S.icon.invert,
+    threshold: S.icon.thr,
+    fgColor: fg,
+    bgColor: bg
+  });
+
+  const out = [];
+  for (let i = 0; i < 32 * 32; i++) {
+    const on = smartGrid[i];
+    out.push({
+      bg: on ? fg : bg,
+      fg: fg,
+      shape: -1,
+      lum: 0,
+      ch: ''
+    });
+  }
+  S.gw = 32;
+  S.gh = 32;
+  return out;
+}
+
+// --- Bitmap engine helpers (unchanged) ---
+function getBitmapPalette() {
+  const bm = S.bm;
+  if (bm.cm === 1) { const cs = [C.BK, C.WH, C.BL, C.GR, C.BD, C.GY]; return [cs[bm.pi2 % 6]]; }
+  if (bm.cm === 2) return [...P2[bm.pi2].c];
+  if (bm.cm === 3) return [...P3[bm.pi3].c];
+  const p = [...P4[bm.pi4].c];
+  if (bm.psh > 0) return p.map((_, i) => p[(i + bm.psh) % p.length]);
+  return p;
+}
+
+function gridBitmap(id, gw, gh) {
+  const bm = S.bm, pal = getBitmapPalette(), bg = pal[0], ct = bm.contrast, shp = bm.shape;
+  const lumArr = new Float32Array(gw * gh);
+  for (let i = 0; i < gw * gh; i++) {
+    const r = id.data[i * 4], g = id.data[i * 4 + 1], b = id.data[i * 4 + 2];
+    lumArr[i] = Math.min(255, lum(r, g, b) * ct);
+  }
+  if (shp === 6) return Array.from({ length: gw * gh }, (_, i) => ({ bg, fg: pal[pal.length - 1], shape: 6, lum: lumArr[i], ch: '' }));
+  if (shp === 7) {
+    const n = ASCII_CHARS.length - 1;
+    return Array.from({ length: gw * gh }, (_, i) => {
+      const ci = Math.min(Math.floor(lumArr[i] / 255 * n), n);
+      return { bg, fg: pal[pal.length - 1], shape: 7, lum: lumArr[i], ch: ASCII_CHARS[ci] };
+    });
+  }
+  const idx = dither(lumArr, gw, gh, pal, bm.dither);
+  return Array.from({ length: gw * gh }, (_, i) => {
+    const pi = idx[i], isBg = (pi === 0 && pal.length > 1);
+    return { bg, fg: pal[pi], shape: isBg ? -1 : shp, lum: lumArr[i], ch: '' };
+  });
+}
+
+function dither(lumArr, W, H, pal, method) {
+  const N = pal.length, pLum = pal.map(c => lum(c[0], c[1], c[2]));
+  const idx = new Uint8Array(W * H), err = new Float32Array(lumArr);
+  const near = v => { let b = 0, bd = 1e9; for (let i = 0; i < N; i++) { const d = Math.abs(v - pLum[i]); if (d < bd) { bd = d; b = i; } } return b; };
+  const cl = v => Math.max(0, Math.min(255, v));
+  if (method === 0) {
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++)
+      idx[y * W + x] = near(cl(lumArr[y * W + x] + (BAYER8[y % 8][x % 8] / 64 - .5) * 80));
+  } else if (method === 1) {
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+      const v = cl(err[y * W + x]), b = near(v); idx[y * W + x] = b; const e = v - pLum[b];
+      if (x + 1 < W) err[y * W + x + 1] += e * 0.4375;
+      if (y + 1 < H) { if (x > 0) err[(y + 1) * W + x - 1] += e * 0.1875; err[(y + 1) * W + x] += e * 0.3125; if (x + 1 < W) err[(y + 1) * W + x + 1] += e * 0.0625; }
+    }
+  } else if (method === 2) {
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+      const v = cl(err[y * W + x]), b = near(v); idx[y * W + x] = b; const e8 = (v - pLum[b]) / 8;
+      if (x + 1 < W) err[y * W + x + 1] += e8; if (x + 2 < W) err[y * W + x + 2] += e8;
+      if (y + 1 < H) { if (x > 0) err[(y + 1) * W + x - 1] += e8; err[(y + 1) * W + x] += e8; if (x + 1 < W) err[(y + 1) * W + x + 1] += e8; }
+      if (y + 2 < H) err[(y + 2) * W + x] += e8;
+    }
+  } else {
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+      const adv = ((x ^ y ^ (x * 3) ^ (y * 5)) & 0xFF) / 255;
+      idx[y * W + x] = Math.min(N - 1, Math.max(0, Math.round(cl(lumArr[y * W + x] + (adv - .5) * (256 / Math.max(1, N - 1))) / 255 * (N - 1))));
+    }
+  }
+  return idx;
+}
+
+function drawShape(ctx, x, y, c, shape, cellLum, ch) {
+  if (c <= 2) { ctx.fillRect(x, y, c, c); return; }
+  const cx = (x + c / 2) | 0, cy = (y + c / 2) | 0, r = (c * .44) | 0, arm = (c * .38) | 0;
+  if (shape === 7) {
+    ctx.save(); ctx.font = `${c * .82}px "Courier New",monospace`;
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(ch || ' ', cx + .5, cy + 1); ctx.restore(); return;
+  }
+  switch (shape) {
+    case 0: ctx.fillRect(x, y, c, c); break;
+    case 1: ctx.beginPath(); ctx.arc(cx + .5, cy + .5, Math.max(1, r), 0, Math.PI * 2); ctx.fill(); break;
+    case 2: { const lw = Math.max(1, (c / 6) | 0); ctx.fillRect(cx - arm, cy - (lw >> 1), arm * 2, lw); ctx.fillRect(cx - (lw >> 1), cy - arm, lw, arm * 2); break; }
+    case 3: {
+      const lw = Math.max(1, (c / 7) | 0); ctx.save(); ctx.translate(cx + .5, cy + .5); ctx.rotate(Math.PI / 4);
+      ctx.fillRect(-arm, -(lw >> 1), arm * 2, lw); ctx.fillRect(-(lw >> 1), -arm, lw, arm * 2); ctx.restore(); break;
+    }
+    case 4: {
+      const ro = Math.max(2, (c * .43) | 0), ri = Math.max(1, (c * .22) | 0);
+      ctx.beginPath(); ctx.arc(cx + .5, cy + .5, ro, 0, Math.PI * 2, false); ctx.arc(cx + .5, cy + .5, ri, 0, Math.PI * 2, true); ctx.fill('evenodd'); break;
+    }
+    case 5: {
+      const bh = Math.max(1, (c / 7) | 0), gap = (c * .24) | 0;
+      [cy - gap - bh, cy - (bh >> 1), cy + gap].forEach(yy => { if (yy >= y && yy + bh <= y + c) ctx.fillRect(cx - arm, yy, arm * 2, bh); }); break;
+    }
+    case 6: {
+      if (cellLum > 200) return; const dr = Math.max(1.5, (1 - cellLum / 200) * c * .44);
+      ctx.beginPath(); ctx.arc(cx + .5, cy + .5, dr, 0, Math.PI * 2); ctx.fill(); break;
+    }
+  }
+}
+
+// --- Bake stack, mask, file, export ---
+function bake() {
+  if (!S.img) return;
+  const iw = S.img.naturalWidth, ih = S.img.naturalHeight;
+  const bk = createOffscreenCanvas(iw, ih);
+  const bctx = bk.getContext('2d');
+  bctx.imageSmoothingEnabled = false;
+  const pal = P2[S.fx.palIdx], fg = pal.c[0], bg = pal.c[1];
+  const top = S.bakeStack.length ? S.bakeStack[S.bakeStack.length - 1] : null;
+  if (top) { bctx.drawImage(top, 0, 0); }
+  else if (S.fx.colorMode) { bctx.drawImage(S.img, 0, 0); }
+  else { bctx.filter = 'grayscale(1)'; bctx.drawImage(S.img, 0, 0); bctx.filter = 'none'; }
+  const cellSize = DEPTHS[S.fx.depth];
+  if (S.fx.checker && S.mask) {
+    for (let my = 0; my < S.mh; my++) for (let mx = 0; mx < S.mw; mx++) {
+      if (!S.mask[my * S.mw + mx]) continue;
+      bctx.fillStyle = rgb(((mx + my) & 1) === 0 ? fg : bg); bctx.fillRect(mx * cellSize, my * cellSize, cellSize, cellSize);
+    }
+  }
+  if (S.fx.markers) drawMarkers(bctx, iw, ih, 0, 0, fg, bg, S.fx.ms, S.fx.mc, S.fx.m2c, 1);
+  if (S.fx.ml2) drawMarkers(bctx, iw, ih, 0, 0, bg, fg, S.fx.ms + 1, S.fx.mc2, true, 1);
+  S.bakeStack.push(bk); S.mask = null;
+  renderEffects(); msg(`Baked — ${S.bakeStack.length} layer${S.bakeStack.length > 1 ? 's' : ''} in stack`);
+}
+
+function undoBake() {
+  if (!S.bakeStack.length) { msg('No bakes to undo'); return; }
+  S.bakeStack.pop(); renderEffects();
+  msg(`Bake undone — ${S.bakeStack.length} layer${S.bakeStack.length !== 1 ? 's' : ''} remain`);
+}
+
+function clearBakes() { S.bakeStack = []; S.mask = null; renderEffects(); msg('All bakes cleared'); }
+
+function initMask() {
+  if (!S.img) return;
+  const cellSize = DEPTHS[S.fx.depth];
+  const mw = Math.ceil(S.img.naturalWidth / cellSize), mh = Math.ceil(S.img.naturalHeight / cellSize);
+  if (!S.mask || S.mw !== mw || S.mh !== mh) { S.mask = new Uint8Array(mw * mh); S.mw = mw; S.mh = mh; }
+}
+
+function screenToMask(mx, my) {
+  if (!S.img) return null;
+  const { ox, oy } = vOff(S.img.naturalWidth, S.img.naturalHeight);
+  const ix = (mx - ox) / S.vz, iy = (my - oy) / S.vz;
+  const cellSize = DEPTHS[S.fx.depth];
+  const c = Math.floor(ix / cellSize), r = Math.floor(iy / cellSize);
+  if (c < 0 || c >= S.mw || r < 0 || r >= S.mh) return null;
+  return [c, r];
+}
+
+function paintMask(mx, my, val, rad) {
+  if (!S.mask) return;
+  const p = screenToMask(mx, my); if (!p) return;
+  const [cc, cr] = p;
+  for (let dr = -rad; dr <= rad; dr++) for (let dc = -rad; dc <= rad; dc++) {
+    if (dc * dc + dr * dr > rad * rad) continue;
+    const c2 = cc + dc, r2 = cr + dr;
+    if (c2 >= 0 && c2 < S.mw && r2 >= 0 && r2 < S.mh) S.mask[r2 * S.mw + c2] = val ? 1 : 0;
+  }
+}
+
+// Helper for icon grid coordinate conversion (unchanged)
+function screenToIconCell(mx, my) {
+  if (!S.img || S.mode !== 'icon') return null;
+  const c = cs(); // cell size
+  const gw = 32, gh = 32; // canonical grid
+  const { ox, oy } = vOff(gw * c, gh * c);
+  const ix = (mx - ox) / S.vz;
+  const iy = (my - oy) / S.vz;
+  const col = Math.floor(ix / c);
+  const row = Math.floor(iy / c);
+  if (col < 0 || col >= gw || row < 0 || row >= gh) return null;
+  return { row, col };
+}
+
+function loadFile(file) {
+  if (!file || !file.type.startsWith('image/')) return;
+  const url = URL.createObjectURL(file);
+  const img = new Image();
+  img.onload = () => {
+    S.img = img; S.bakeStack = []; S.mask = null; S.vz = 1; S.vpx = 0; S.vpy = 0;
+    getDropOverlay().classList.remove('vis');
+    getStatusImage().innerHTML = `IMG <b>${img.naturalWidth}×${img.naturalHeight}</b>`;
+    dProc(); msg(`Loaded ${img.naturalWidth}×${img.naturalHeight}`);
+  };
+  img.onerror = () => msg('Failed to load image');
+  img.src = url;
+}
+
+function exportPNG() {
+  if (!S.img) { msg('No image loaded'); return; }
+  if (S.mode === 'effects') {
+    const iw = S.img.naturalWidth, ih = S.img.naturalHeight;
+    const ec = createOffscreenCanvas(iw, ih);
+    const ex = ec.getContext('2d');
+    ex.imageSmoothingEnabled = false;
+    const pal = P2[S.fx.palIdx], fg = pal.c[0], bg = pal.c[1];
+    const top = S.bakeStack.length ? S.bakeStack[S.bakeStack.length - 1] : null;
+    if (top) { ex.drawImage(top, 0, 0); }
+    else if (S.fx.colorMode) { ex.drawImage(S.img, 0, 0); }
+    else { ex.filter = 'grayscale(1)'; ex.drawImage(S.img, 0, 0); ex.filter = 'none'; }
+    const cellSize = DEPTHS[S.fx.depth];
+    if (S.fx.checker && S.mask) {
+      for (let my = 0; my < S.mh; my++) for (let mx = 0; mx < S.mw; mx++) {
+        if (!S.mask[my * S.mw + mx]) continue;
+        ex.fillStyle = rgb(((mx + my) & 1) === 0 ? fg : bg); ex.fillRect(mx * cellSize, my * cellSize, cellSize, cellSize);
+      }
+    }
+    if (S.fx.markers) drawMarkers(ex, iw, ih, 0, 0, fg, bg, S.fx.ms, S.fx.mc, S.fx.m2c, 1);
+    if (S.fx.ml2) drawMarkers(ex, iw, ih, 0, 0, bg, fg, S.fx.ms + 1, S.fx.mc2, true, 1);
+    ec.convertToBlob().then(b => downloadBlob(b, `HTW_effects_${Date.now()}.png`));
+  } else if (S.mode === 'icon') {
+    const scale = 8;
+    const gw = 32, gh = 32;
+    const ec = createOffscreenCanvas(gw * scale, gh * scale);
+    const ex = ec.getContext('2d');
+    ex.imageSmoothingEnabled = false;
+    for (let r = 0; r < gh; r++) for (let c = 0; c < gw; c++) {
+      const cell = S.grid[r * gw + c];
+      ex.fillStyle = rgb(cell.bg);
+      ex.fillRect(c * scale, r * scale, scale, scale);
+    }
+    ec.convertToBlob().then(b => downloadBlob(b, `HTW_icon_${Date.now()}.png`));
+  } else {
+    if (!S.grid) return;
+    const c = cs(), gw = S.gw, gh = S.gh, scale = Math.max(1, Math.ceil(S.img.naturalWidth / gw));
+    const ec = createOffscreenCanvas(gw * scale, gh * scale);
+    const ex = ec.getContext('2d');
+    ex.imageSmoothingEnabled = false;
+    for (let r = 0; r < gh; r++) for (let cc = 0; cc < gw; cc++) {
+      const cell = S.grid[r * gw + cc]; if (!cell) continue;
+      ex.fillStyle = rgb(cell.bg); ex.fillRect(cc * scale, r * scale, scale, scale);
+      if (cell.shape >= 0) { ex.fillStyle = rgb(cell.fg); drawShape(ex, cc * scale, r * scale, scale, cell.shape, cell.lum, cell.ch); }
+    }
+    ec.convertToBlob().then(b => downloadBlob(b, `HTW_${S.mode}_${Date.now()}.png`));
+  }
+}
+
+function exportSVG() {
+  if (!S.img || S.mode !== 'icon' || !S.grid) { msg('No icon grid to export'); return; }
+  const gw = 32, gh = 32;
+  let svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${gw} ${gh}" shape-rendering="crispEdges">`;
+  for (let r = 0; r < gh; r++) {
+    for (let c = 0; c < gw; c++) {
+      const cell = S.grid[r * gw + c];
+      const color = rgb(cell.bg).match(/\d+/g).map(Number);
+      svg += `<rect x="${c}" y="${r}" width="1" height="1" fill="rgb(${color[0]},${color[1]},${color[2]})"/>`;
+    }
+  }
+  svg += '</svg>';
+  return svg;
+}
+
+function copySVG() {
+  const svg = exportSVG();
+  if (!svg) return;
+  navigator.clipboard.writeText(svg).then(() => msg('SVG copied to clipboard')).catch(() => msg('Copy failed'));
+}
+
+// --- Status and sidebar ---
+function updateStatus() {
+  getStatusMode().innerHTML = `<b>${S.mode.toUpperCase()}</b>`;
+  getStatusGrid().innerHTML = S.mode === 'effects'
+    ? `BAKES <b>${S.bakeStack.length}</b>` : `GRID <b>${S.gw || '—'}×${S.gh || '—'}</b>`;
+  getStatusZoom().innerHTML = `ZOOM <b>${Math.round(S.vz * 100)}%</b>`;
+  let pn = '';
+  if (S.mode === 'bitmap') {
+    if (S.bm.cm === 2) pn = P2[S.bm.pi2].n;
+    else if (S.bm.cm === 3) pn = P3[S.bm.pi3].n;
+    else if (S.bm.cm === 4) pn = P4[S.bm.pi4].n;
+  } else pn = P2[S.fx.palIdx].n;
+  getStatusPalette().innerHTML = `PAL <b>${pn || '—'}</b>`;
+}
+
+function msg(m) { getStatusMessage().textContent = m; }
+
+let _sbQ = false;
+function updateSidebar() {
+  if (_sbQ) return; _sbQ = true;
+  requestAnimationFrame(() => { _sbQ = false; renderSidebar(); });
+}
+
+// Sidebar rendering functions
+const sec = (l, b) => `<div class="sbs"><span class="sbl">${l}</span>${b}</div><div class="sbs"><div class="sbdiv"></div></div>`;
+const tog = (id, l, on, k = '') => `<div class="tog" data-t="${id}"><span class="togl">${l}</span>${k ? `<span class="togk">[${k}]</span>` : ''}<div class="togp${on ? ' on' : ''}">${on ? 'ON' : 'OFF'}</div></div>`;
+const sld = (id, l, v, mn, mx, st = 1, dp = 0) => `<div class="slrow"><label>${l}</label><span class="slval" id="sv-${id}">${dp ? v.toFixed(dp) : Math.round(v)}</span><input type="range" id="sl-${id}" min="${mn}" max="${mx}" step="${st}" value="${v}"></div>`;
+const brow = items => `<div class="brow">${items.map(it => `<button class="b${it.on ? ' on' : ''}" id="${it.id}">${it.l}</button>`).join('')}</div>`;
+const bgrd = items => `<div class="bgrid">${items.map(it => `<button class="b${it.on ? ' on' : ''}" id="${it.id}">${it.l}</button>`).join('')}</div>`;
+const sw = c => `<div class="psw" style="background:rgb(${c[0]},${c[1]},${c[2]})"></div>`;
+const p2g = (act, pr, attr) => `<div class="pgrid">${pr.map((p, i) => `<div class="pit${i === act ? ' on' : ''}" ${attr}="${i}">${p.c.map(sw).join('')}<div class="pnm">${p.n}</div></div>`).join('')}</div>`;
+const p1g = (act, pr, attr) => `<div class="pgrid w1">${pr.map((p, i) => `<div class="pit${i === act ? ' on' : ''}" ${attr}="${i}">${p.c.map(sw).join('')}<div class="pnm">${p.n}</div></div>`).join('')}</div>`;
+
+function deptBtns(pfx, act) { return bgrd(DEPTHS.map((d, i) => ({ id: `${pfx}-${i}`, l: String(d), on: i === act }))); }
+
+function shapeGrid(act) {
+  const svgs = [
+    `<rect x="1" y="1" width="14" height="14"/>`,
+    `<circle cx="8" cy="8" r="6"/>`,
+    `<rect x="2" y="7" width="12" height="2"/><rect x="7" y="2" width="2" height="12"/>`,
+    `<line x1="3" y1="3" x2="13" y2="13" stroke-width="2"/><line x1="13" y1="3" x2="3" y2="13" stroke-width="2"/>`,
+    `<circle cx="8" cy="8" r="6" fill="none" stroke-width="2"/>`,
+    `<rect x="2" y="3" width="12" height="2"/><rect x="2" y="7" width="12" height="2"/><rect x="2" y="11" width="12" height="2"/>`,
+    `<circle cx="4" cy="8" r="2"/><circle cx="9" cy="8" r="3.5"/><circle cx="14" cy="8" r="5" clip-path="inset(0 0 0 9px)"/>`,
+    `<text x="8" y="12" text-anchor="middle" font-size="11" font-family="monospace">A</text>`,
+  ];
+  return `<div class="sgrid">${SHAPES.map((n, i) => {
+    const col = i === act ? '#fff' : '#555';
+    const svg = svgs[i].replace(/(<(?:rect|circle|line|text)[^>]*?)>/g, (m, p) => {
+      if (p.includes('fill="none"')) return p.replace('stroke-width', 'stroke="' + col + '" stroke-width') + '>';
+      if (p.includes('<line')) return p.replace('stroke-width', `stroke="${col}" stroke-width`) + '>';
+      if (p.includes('<text')) return p.replace('<text', `<text fill="${col}"`) + '>';
+      return p + ` fill="${col}">`;
+    });
+    return `<div class="shpb${i === act ? ' on' : ''}" id="shp-${i}">
+  <svg width="16" height="16" viewBox="0 0 16 16">${svg}</svg>
+  <span class="shn">${n}</span></div>`;
+  }).join('')}</div>`;
+}
+
+function palMono(act) {
+  const cs = [C.BK, C.WH, C.BL, C.GR, C.BD, C.GY], ns = ['Black', 'White', 'Blue', 'Airdrop', 'Deep', 'Grey'];
+  return `<div class="pgrid w3">${cs.map((c, i) => `<div class="pit${i === act ? ' on' : ''}" data-mono="${i}">${sw(c)}<div class="pnm">${ns[i]}</div></div>`).join('')}</div>`;
+}
+
+function renderSidebar() {
+  const sb = getSidebar();
+  let h = `<div class="sbhead"><div class="sbmode">${S.mode.toUpperCase()} MODE</div>
+<div class="sbzoom">${Math.round(S.vz * 100)}%</div></div><div class="sbbar"></div>`;
+  if (S.mode === 'icon') h += sbIcon();
+  if (S.mode === 'effects') h += sbEffects();
+  if (S.mode === 'bitmap') h += sbBitmap();
+  h += `<div style="height:82px"></div>`;
+  sb.innerHTML = h;
+  sb.insertAdjacentHTML('beforeend', `<div class="sbfoot">
+<div class="frow">
+  <button class="b" id="fu">↺ Undo</button>
+  <button class="b" id="fr">↻ Redo</button>
+  <button class="b" id="frs">⊹ Fit view</button>
+</div>
+<button class="expbtn" id="fe">E · EXPORT PNG</button>
+<div class="frow" style="margin-top:3px">
+  <button class="b" id="fsvg">SVG</button>
+  <button class="b" id="fcopy">📋 Copy SVG</button>
+</div>
+</div>`);
+  wireUI(); updateStatus();
+}
+
+function sbIcon() {
+  const ic = S.icon;
+  return sec('FIT MODE', brow([
+    { id: 'fit-contain', l: 'Contain', on: ic.fitMode === 'contain' },
+    { id: 'fit-cover', l: 'Cover', on: ic.fitMode === 'cover' }
+  ]))
+    + sec('PIXEL SIZE', deptBtns('ipx', DEPTHS.indexOf(ic.size)))
+    + sec('THRESHOLD [↑↓]', sld('thr', '', ic.thr, 0, 255))
+    + sec('OPTIONS', tog('iinv', 'Invert', 'I', ic.invert) + tog('igrid', 'Grid overlay', 'G', ic.grid))
+    + sec('PALETTE [P]', p2g(S.fx.palIdx, P2, 'data-p2'));
+}
+
+function sbEffects() {
+  const fx = S.fx, hasBake = S.bakeStack.length > 0, hasMask = S.mask && S.mask.some(v => v);
+  return sec('BASE IMAGE', tog('ecolor', 'Color', 'C', fx.colorMode) + tog('egrid', 'Grid overlay', 'G', fx.grid))
+    + sec('BRUSH', sld('ebrush', 'Brush size', fx.brushSize, 1, 8))
+    + sec('CHECKER PATTERN',
+      tog('echk', 'Enable  [K]', '', fx.checker) +
+      (fx.checker ?
+        sec('CELL SIZE', deptBtns('fxdepth', fx.depth)) +   // mother‑grid depth selector
+        `<button class="abtn apply" id="ebk">${hasMask ? '↵  APPLY CHECKER  [Enter]' : 'Paint a zone first…'}</button>` : ''))
+    + (hasBake ? `<div class="sbs"><div class="bkinfo">
+    <span class="bkcount">● ${S.bakeStack.length} bake${S.bakeStack.length !== 1 ? 's' : ''} in stack</span></div>
+    <button class="abtn warn" id="eubk">↺  Undo last bake</button>
+    <button class="abtn danger" id="eclr">✕  Clear all bakes</button>
+  </div><div class="sbs"><div class="sbdiv"></div></div>` : '')
+    + sec('MARKERS',
+      tog('emk', 'Layer 1  [J]', '', fx.markers) +
+      (fx.markers ? sld('mc', 'Count (L1)', fx.mc, 1, 60) + sld('ms', 'Seed', fx.ms, 0, 9999) + tog('em2c', '2-color', '', fx.m2c) : '')
+      + tog('eml2', 'Layer 2', '', fx.ml2)
+      + (fx.ml2 ? sld('mc2', 'Count (L2)', fx.mc2, 1, 60) : ''))
+    + sec('PALETTE [P]', p2g(fx.palIdx, P2, 'data-pfx'));
+}
+
+function sbBitmap() {
+  const bm = S.bm;
+  const di = [{ id: 'di-0', l: 'Bayer', on: bm.dither === 0 }, { id: 'di-1', l: 'Floyd-S', on: bm.dither === 1 },
+  { id: 'di-2', l: 'Atkinson', on: bm.dither === 2 }, { id: 'di-3', l: 'A-Dither', on: bm.dither === 3 }];
+  const cm = [{ id: 'cm-1', l: 'Mono', on: bm.cm === 1 }, { id: 'cm-2', l: '2-col', on: bm.cm === 2 },
+  { id: 'cm-3', l: '3-col', on: bm.cm === 3 }, { id: 'cm-4', l: '4-col', on: bm.cm === 4 }];
+  let palH = '';
+  if (bm.cm === 1) palH = palMono(bm.pi2 % 6);
+  if (bm.cm === 2) palH = p2g(bm.pi2, P2, 'data-p2');
+  if (bm.cm === 3) palH = p1g(bm.pi3, P3, 'data-p3');
+  if (bm.cm === 4) palH = p1g(bm.pi4, P4, 'data-p4') + `<button class="abtn" id="bshift">↺  Cycle color order  (${bm.psh})</button>`;
+  return sec('DITHER ALGORITHM', brow(di) + sld('bct', 'Contrast', bm.contrast, 0.25, 2.5, 0.05, 2))
+    + sec('CELL SIZE', deptBtns('bpx', bm.depth))
+    + sec('SHAPE', shapeGrid(bm.shape))
+    + `<div class="sbs"><span class="sbl">COLOR MODE</span>${brow(cm)}<div class="sbdiv"></div>`
+    + `<span class="sbl">PALETTE [P]</span>${palH}</div>`;
+}
+
+// --- Wire UI and event handling ---
+function wireUI() {
+  const old = getSidebar();
+  const fresh = old.cloneNode(true);
+  old.parentNode.replaceChild(fresh, old);
+  const ns = getSidebar();
+
+  ns.addEventListener('click', e => {
+    const t = e.target.closest('[id],[data-t],[data-p2],[data-pfx],[data-p3],[data-p4],[data-mono]');
+    if (!t) return;
+    if (t.dataset.t) { handleToggle(t.dataset.t); return; }
+    if (t.dataset.p2 !== undefined) { const i = +t.dataset.p2; if (S.mode === 'bitmap') S.bm.pi2 = i; else S.fx.palIdx = i; dProc(); return; }
+    if (t.dataset.pfx !== undefined) { S.fx.palIdx = +t.dataset.pfx; dProc(); return; }
+    if (t.dataset.p3 !== undefined) { S.bm.pi3 = +t.dataset.p3; dProc(); return; }
+    if (t.dataset.p4 !== undefined) { S.bm.pi4 = +t.dataset.p4; dProc(); return; }
+    if (t.dataset.mono !== undefined) { S.bm.pi2 = +t.dataset.mono; dProc(); return; }
+    const id = t.id; if (!id) return;
+    if (id.startsWith('ipx-')) { S.icon.size = DEPTHS[+id.split('-')[1]]; dProc(); return; }
+    if (id.startsWith('bpx-')) { S.bm.depth = +id.split('-')[1]; dProc(); return; }
+    if (id.startsWith('fxdepth-')) { S.fx.depth = +id.split('-')[1]; S.mask = null; dProc(); return; }
+    if (id.startsWith('di-')) { S.bm.dither = +id.split('-')[1]; dProc(); return; }
+    if (id.startsWith('cm-')) { S.bm.cm = +id.split('-')[1]; dProc(); return; }
+    if (id.startsWith('shp-')) { S.bm.shape = +id.split('-')[1]; dProc(); return; }
+    if (id === 'fu') { undo(); return; } if (id === 'fr') { redo(); return; }
+    if (id === 'frs') { S.vz = 1; S.vpx = 0; S.vpy = 0; redraw(); updateStatus(); return; }
+    if (id === 'fe') { exportPNG(); return; }
+    if (id === 'fsvg') { const svg = exportSVG(); if (svg) downloadBlob(new Blob([svg], { type: 'image/svg+xml' }), `HTW_icon_${Date.now()}.svg`); return; }
+    if (id === 'fcopy') { copySVG(); return; }
+    if (id === 'ebk') { bake(); return; }
+    if (id === 'eubk') { undoBake(); return; }
+    if (id === 'eclr') { clearBakes(); return; }
+    if (id === 'bshift') { S.bm.psh = (S.bm.psh + 1) % 4; dProc(); return; }
+    if (id === 'fit-contain') { S.icon.fitMode = 'contain'; dProc(); renderSidebar(); return; }
+    if (id === 'fit-cover') { S.icon.fitMode = 'cover'; dProc(); renderSidebar(); return; }
+  });
+
+  ns.addEventListener('input', e => {
+    if (e.target.type !== 'range') return;
+    const id = e.target.id.replace('sl-', ''), v = parseFloat(e.target.value);
+    const sv = document.getElementById('sv-' + id);
+    if (sv) sv.textContent = (id === 'bct') ? v.toFixed(2) : Math.round(v);
+    switch (id) {
+      case 'thr': S.icon.thr = v | 0; break;
+      case 'ebrush': S.fx.brushSize = v | 0; return;
+      case 'mc': S.fx.mc = v | 0; break;
+      case 'ms': S.fx.ms = v | 0; break;
+      case 'mc2': S.fx.mc2 = v | 0; break;
+      case 'bct': S.bm.contrast = v; break;
+    }
+    dProc();
+  });
+}
+
+function handleToggle(id) {
+  switch (id) {
+    case 'iinv': S.icon.invert = !S.icon.invert; break;
+    case 'igrid': S.icon.grid = !S.icon.grid; break;
+    case 'ecolor': S.fx.colorMode = !S.fx.colorMode; break;
+    case 'egrid': S.fx.grid = !S.fx.grid; break;
+    case 'echk': S.fx.checker = !S.fx.checker; break;
+    case 'emk': S.fx.markers = !S.fx.markers; break;
+    case 'em2c': S.fx.m2c = !S.fx.m2c; break;
+    case 'eml2': S.fx.ml2 = !S.fx.ml2; break;
+  }
+  dProc();
+}
+
+// Undo/redo for grid (icon/bitmap)
+const _undo = [], _redo = [];
+function undo() { if (!_undo.length) { msg('Nothing to undo'); return; } if (S.grid) _redo.push(S.grid.map(c => ({ ...c }))); S.grid = _undo.pop(); renderGrid(); msg(`Undo (${_undo.length} left)`); }
+function redo() { if (!_redo.length) { msg('Nothing to redo'); return; } _undo.push(S.grid.map(c => ({ ...c }))); S.grid = _redo.pop(); renderGrid(); msg('Redo'); }
+
+// Keyboard events
+document.addEventListener('keydown', e => {
+  if (e.target.tagName === 'INPUT') return;
+  if (e.key === ' ') { S.spaceDown = true; e.preventDefault(); return; }
+  if ((e.ctrlKey || e.metaKey) && e.key === 'z') { undo(); return; }
+  if ((e.ctrlKey || e.metaKey) && e.key === 'y') { redo(); return; }
+  switch (e.key) {
+    case '1': setMode('icon'); break; case '2': setMode('effects'); break; case '3': setMode('bitmap'); break;
+    case 'o': case 'O': getFileInput().click(); break;
+    case 'e': case 'E': exportPNG(); break; case 'p': case 'P': cyclePreset(); break;
+    case 'v': case 'V': setTool('move'); break; case 'b': case 'B': setTool('brush'); break;
+    case 'r': case 'R': setTool('rect'); break; case 'x': case 'X': setTool('eraser'); break;
+    case '?': case 'H': toggleHelp(); break;
+    case 'Enter': if (S.mode === 'effects') bake(); break;
+    case 'Escape': S.mask = null; dProc(); break;
+    case '0': S.vz = 1; S.vpx = 0; S.vpy = 0; redraw(); updateStatus(); break;
+    case '+': case '=': S.vz = Math.min(20, S.vz * 1.2); redraw(); updateStatus(); break;
+    case '-': S.vz = Math.max(.1, S.vz / 1.2); redraw(); updateStatus(); break;
+    case 'ArrowUp': if (S.mode === 'icon') { S.icon.thr = Math.min(255, S.icon.thr + 2); dProc(); } break;
+    case 'ArrowDown': if (S.mode === 'icon') { S.icon.thr = Math.max(0, S.icon.thr - 2); dProc(); } break;
+    case 'n': case 'N': if (S.mode === 'effects') { S.fx.ms = Math.floor(Math.random() * 9999); dProc(); } break;
+    case 'k': case 'K': if (S.mode === 'effects') { S.fx.checker = !S.fx.checker; dProc(); } break;
+    case 'j': case 'J': if (S.mode === 'effects') { S.fx.markers = !S.fx.markers; dProc(); } break;
+  }
+});
+document.addEventListener('keyup', e => { if (e.key === ' ') S.spaceDown = false; });
+
+let _rectStart = null;
+cw.addEventListener('mousedown', e => {
+  const isPan = S.tool === 'move' || S.spaceDown;
+  if (isPan) { S.dragging = true; S.dragX = e.clientX; S.dragY = e.clientY; cw.classList.add('cg'); return; }
+  if (S.mode === 'effects') {
+    if (S.tool === 'brush' || S.tool === 'eraser') {
+      initMask(); S.painting = true; S.paintVal = S.tool === 'brush';
+      paintMask(e.clientX, e.clientY, S.paintVal, S.fx.brushSize); renderEffects();
+    }
+    if (S.tool === 'rect') { initMask(); _rectStart = screenToMask(e.clientX, e.clientY); }
+  } else if (S.mode === 'icon' && S.tool === 'brush' && S.grid) {
+    const cell = screenToIconCell(e.clientX, e.clientY);
+    if (cell) {
+      const idx = cell.row * 32 + cell.col;
+      const newGrid = togglePixel(S.grid, cell.col, cell.row, 32);
+      if (newGrid) {
+        _undo.push(S.grid.map(c => ({ ...c })));
+        S.grid = newGrid;
+        _redo.length = 0;
+        renderGrid();
+      }
+    }
+  }
+});
+cw.addEventListener('mousemove', e => {
+  if (S.dragging) { S.vpx += e.clientX - S.dragX; S.vpy += e.clientY - S.dragY; S.dragX = e.clientX; S.dragY = e.clientY; redraw(); return; }
+  if (S.painting && S.mode === 'effects') { paintMask(e.clientX, e.clientY, S.paintVal, S.fx.brushSize); renderEffects(); }
+});
+document.addEventListener('mouseup', e => {
+  S.dragging = false; S.painting = false; cw.classList.remove('cg');
+  if (S.mode === 'effects' && S.tool === 'rect' && _rectStart && S.mask) {
+    const p = screenToMask(e.clientX, e.clientY);
+    if (p) {
+      const [c1, r1] = _rectStart, [c2, r2] = p;
+      const c0 = Math.min(c1, c2), c1b = Math.max(c1, c2), r0 = Math.min(r1, r2), r1b = Math.max(r1, r2);
+      for (let r = r0; r <= r1b; r++) for (let c = c0; c <= c1b; c++)
+        if (r >= 0 && r < S.mh && c >= 0 && c < S.mw) S.mask[r * S.mw + c] = 1;
+      renderEffects();
+    }
+    _rectStart = null;
+  }
+});
+cw.addEventListener('wheel', e => {
+  e.preventDefault();
+  S.vz = Math.max(.1, Math.min(20, S.vz * (e.deltaY < 0 ? 1.12 : .89)));
+  redraw(); updateStatus();
+}, { passive: false });
+
+// Mode and tool switching
+function setMode(m) {
+  S.mode = m;
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('on'));
+  document.getElementById('tab-' + m)?.classList.add('on');
+  renderSidebar();
+  if (S.img) dProc();
+}
+function setTool(t) {
+  S.tool = t;
+  document.querySelectorAll('.tb').forEach(b => b.classList.remove('on'));
+  document.getElementById('t-' + t)?.classList.add('on');
+  cw.classList.toggle('cm', t === 'move');
+}
+function cyclePreset() {
+  if (S.mode === 'bitmap') {
+    if (S.bm.cm === 2) S.bm.pi2 = (S.bm.pi2 + 1) % P2.length;
+    else if (S.bm.cm === 3) S.bm.pi3 = (S.bm.pi3 + 1) % P3.length;
+    else if (S.bm.cm === 4) S.bm.pi4 = (S.bm.pi4 + 1) % P4.length;
+  } else S.fx.palIdx = (S.fx.palIdx + 1) % P2.length;
+  dProc();
+}
+
+// Help overlay toggle
+function toggleHelp() {
+  const drop = getDropOverlay();
+  drop.classList.toggle('vis');
+  if (drop.classList.contains('vis')) msg('Help shown – press ? or H again to hide');
+  else msg('');
+}
+
+// Initial wiring
+document.getElementById('btn-open').onclick = () => getFileInput().click();
+document.getElementById('btn-help').onclick = toggleHelp;
+getFileInput().onchange = e => { if (e.target.files[0]) loadFile(e.target.files[0]); };
+document.getElementById('tab-icon').onclick = () => setMode('icon');
+document.getElementById('tab-effects').onclick = () => setMode('effects');
+document.getElementById('tab-bitmap').onclick = () => setMode('bitmap');
+document.getElementById('t-move').onclick = () => setTool('move');
+document.getElementById('t-brush').onclick = () => setTool('brush');
+document.getElementById('t-rect').onclick = () => setTool('rect');
+document.getElementById('t-eraser').onclick = () => setTool('eraser');
+document.getElementById('t-zi').onclick = () => { S.vz = Math.min(20, S.vz * 1.2); redraw(); updateStatus(); };
+document.getElementById('t-zo').onclick = () => { S.vz = Math.max(.1, S.vz / 1.2); redraw(); updateStatus(); };
+document.getElementById('t-zf').onclick = () => { S.vz = 1; S.vpx = 0; S.vpy = 0; redraw(); updateStatus(); };
+document.body.addEventListener('dragover', e => e.preventDefault());
+document.body.addEventListener('drop', e => { e.preventDefault(); const f = e.dataTransfer.files[0]; if (f) loadFile(f); });
+window.addEventListener('resize', resizeCanvas);
+
+// Debounced process
+const dProc = debounce(() => { if (S.mode === 'effects') renderEffects(); else processGrid(); }, 55);
+
+// Start
+resizeCanvas();
+renderSidebar();
