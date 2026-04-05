@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8" />
+  <title>HTW GENERATOR v0.6.5</title>
+  <link rel="stylesheet" href="styles.css">
+  <!-- Core modules -->
+  <script src="core/palette.js"></script>
+  <script src="core/state.js"></script>
+  <script src="core/dom.js"></script>
+  <script src="core/canvas.js"></script>
+  <script src="core/export.js"></script>
+  <!-- Icon engine (new) -->
+  <script src="engines/icon-engine.js"></script>
+  <script src="engines/icon-editor.js"></script>
+</head>
+
+<body>
+  <div id="topbar">
+    <div class="logo">HTW<em>/</em>GEN</div>
+    <div class="sep"></div>
+    <button class="tab on" id="tab-icon">1 · ICON</button>
+    <button class="tab" id="tab-effects">2 · EFFECTS</button>
+    <button class="tab" id="tab-bitmap">3 · BITMAP</button>
+    <div class="sep"></div>
+    <button id="btn-open">O · OPEN</button>
+    <button class="tab" id="btn-help">? · HELP</button>
+    <div class="flex1"></div>
+    <div class="topinfo">COLLAPSE CREATIVE · HTW GENERATOR · v0.6.5</div>
+  </div>
+  <div id="toolbar">
+    <button class="tb on" id="t-move" title="Move / Pan [V]">⊹</button>
+    <button class="tb" id="t-brush" title="Brush [B]">●</button>
+    <button class="tb" id="t-rect" title="Rect select [R]">□</button>
+    <div class="tbsep"></div>
+    <button class="tb" id="t-eraser" title="Eraser [X]">◌</button>
+    <div class="tbsep"></div>
+    <button class="tb" id="t-zi" title="Zoom in [+]" style="font-size:14px">+</button>
+    <button class="tb" id="t-zo" title="Zoom out [-]" style="font-size:14px">−</button>
+    <button class="tb" id="t-zf" title="Fit [0]" style="font-size:8px">FIT</button>
+  </div>
+  <div id="cw">
+    <canvas id="cv"></canvas>
+    <div id="drop" class="vis">
+      <div class="dh">
+        <span class="dx">+</span>
+        <h2>DROP IMAGE HERE</h2>
+        <p>or press O · PNG · JPG · WEBP</p>
+        <div class="keys">
+          <span><b>1 2 3</b> Switch mode</span>
+          <span><b>O</b> Open image &nbsp;&nbsp; <b>E</b> Export PNG</span>
+          <span><b>P</b> Cycle palette &nbsp; <b>↑↓</b> Threshold (icon)</span>
+          <span><b>V</b> Pan &nbsp;<b>B</b> Brush &nbsp;<b>R</b> Rect &nbsp;<b>X</b> Erase</span>
+          <span><b>K</b> Toggle checker &nbsp; <b>J</b> Toggle rail 1</span>
+          <span><b>N</b> Randomise seed &nbsp; <b>?/H</b> Toggle help</span>
+          <span><b>Enter</b> Bake &nbsp; <b>Esc</b> Clear mask</span>
+          <span><b>Scroll</b> Zoom &nbsp; <b>0</b> Fit &nbsp; <b>Space+drag</b> Pan</span>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div id="sidebar"></div>
+  <div id="statusbar">
+    <div class="st" id="st-mode"><b>ICON</b></div>
+    <div class="st" id="st-grid">GRID <b>—</b></div>
+    <div class="st" id="st-img">IMG <b>none</b></div>
+    <div class="st" id="st-zoom">ZOOM <b>100%</b></div>
+    <div class="st g" id="st-pal">PAL <b>—</b></div>
+    <div id="st-msg">Drop image or press O</div>
+  </div>
+  <input type="file" id="file-input" accept="image/*" style="display:none">
+  <script src="app.js"></script>
+</body>
+
+</html>
