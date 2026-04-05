@@ -558,13 +558,6 @@ input[type=range] {
   color: var(--text)
 }
 
-.abtn:disabled,
-.abtn.disabled-cta {
-  opacity: 0.35;
-  cursor: not-allowed;
-  pointer-events: none
-}
-
 .abtn.apply {
   background: #002818;
   color: var(--green);

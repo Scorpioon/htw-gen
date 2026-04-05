@@ -144,51 +144,6 @@ function renderEffects() {
     for (let y = oy; y < oy + dh; y += gsz) { ctx.beginPath(); ctx.moveTo(ox, y); ctx.lineTo(ox + dw, y); ctx.stroke(); }
   }
 
-  // Live authoring cursor preview -- drawn last, above checker / markers / noise / grid
-  if (_curCell && S.mode === 'effects' && S.tool !== 'move') {
-    const [cc, cr] = _curCell;
-    const cszA = cellSize * S.vz;
-    const previewCols = Math.floor(iw / cellSize);
-    const previewRows = Math.floor(ih / cellSize);
-    if (S.tool === 'brush') {
-      ctx.fillStyle = 'rgba(0,68,253,0.45)';
-      const cellRadius = Math.max(1, Math.floor(S.fx.brushSize / cellSize));
-      for (let dr = -cellRadius; dr <= cellRadius; dr++) for (let dc = -cellRadius; dc <= cellRadius; dc++) {
-        if (dc * dc + dr * dr > cellRadius * cellRadius) continue;
-        const px = cc + dc, py = cr + dr;
-        if (px < 0 || px >= previewCols || py < 0 || py >= previewRows) continue;
-        ctx.fillRect(ox + px * cszA, oy + py * cszA, cszA, cszA);
-      }
-    } else if (S.tool === 'eraser') {
-      ctx.fillStyle = 'rgba(255,80,80,0.35)';
-      const cellRadius = Math.max(1, Math.floor(S.fx.brushSize / cellSize));
-      for (let dr = -cellRadius; dr <= cellRadius; dr++) for (let dc = -cellRadius; dc <= cellRadius; dc++) {
-        if (dc * dc + dr * dr > cellRadius * cellRadius) continue;
-        const px = cc + dc, py = cr + dr;
-        if (px < 0 || px >= previewCols || py < 0 || py >= previewRows) continue;
-        ctx.fillRect(ox + px * cszA, oy + py * cszA, cszA, cszA);
-      }
-    } else if (S.tool === 'rect') {
-      ctx.fillStyle = 'rgba(0,68,253,0.30)';
-      ctx.strokeStyle = 'rgba(0,68,253,0.70)';
-      ctx.lineWidth = 1;
-      if (_rectStart) {
-        const [c1, r1] = _rectStart;
-        const c0 = Math.min(c1, cc), c1b = Math.max(c1, cc);
-        const r0 = Math.min(r1, cr), r1b = Math.max(r1, cr);
-        for (let ry = r0; ry <= r1b; ry++) for (let rx = c0; rx <= c1b; rx++) {
-          if (rx < 0 || rx >= previewCols || ry < 0 || ry >= previewRows) continue;
-          ctx.fillRect(ox + rx * cszA, oy + ry * cszA, cszA, cszA);
-        }
-        ctx.strokeRect(ox + c0 * cszA + 0.5, oy + r0 * cszA + 0.5,
-          (c1b - c0 + 1) * cszA - 1, (r1b - r0 + 1) * cszA - 1);
-      } else {
-        ctx.fillRect(ox + cc * cszA, oy + cr * cszA, cszA, cszA);
-        ctx.strokeRect(ox + cc * cszA + 0.5, oy + cr * cszA + 0.5, cszA - 1, cszA - 1);
-      }
-    }
-  }
-
   updateStatus();
   updateSidebar();
 }
@@ -512,9 +467,6 @@ function drawShape(ctx, x, y, c, shape, cellLum, ch) {
 // Bake: store current overlays as a new independent layer
 function bake() {
   if (!S.img) return;
-  // Require a painted mask zone -- baking rails/noise alone produces no committed authoring
-  const hasMask = S.mask && S.mask.some(v => v);
-  if (!hasMask) { msg('Paint a zone first'); return; }
   const iw = S.img.naturalWidth, ih = S.img.naturalHeight;
   const pal = P2[S.fx.palIdx], fg = pal.c[0], bg = pal.c[1];
 
@@ -846,7 +798,7 @@ function sbEffects() {
       tog('echk', 'Enable', fx.checker, 'K') +
       (fx.checker ?
         sec('CELL SIZE', deptBtns('fxdepth', fx.depth)) +
-        `<button class="abtn apply${hasMask ? '' : ' disabled-cta'}" id="ebk"${hasMask ? '' : ' disabled'}>${hasMask ? '↵  APPLY CHECKER  [Enter]' : 'Paint a zone first…'}</button>` : ''))
+        `<button class="abtn apply" id="ebk">${hasMask ? '↵  APPLY CHECKER  [Enter]' : 'Paint a zone first…'}</button>` : ''))
     + layersHtml
     + (S.bakeStack.length ? `<div class="sbs"><button class="abtn warn" id="eubk">↺  Undo last bake</button><button class="abtn danger" id="eclr">✕  Clear all bakes</button></div><div class="sbs"><div class="sbdiv"></div></div>` : '')
     + sec('RAILS',
@@ -997,7 +949,6 @@ document.addEventListener('keydown', e => {
 document.addEventListener('keyup', e => { if (e.key === ' ') S.spaceDown = false; });
 
 let _rectStart = null;
-let _curCell = null; // current [c,r] under cursor in effects mode
 cw.addEventListener('mousedown', e => {
   const isPan = S.tool === 'move' || S.spaceDown;
   if (isPan) { S.dragging = true; S.dragX = e.clientX; S.dragY = e.clientY; cw.classList.add('cg'); return; }
@@ -1024,21 +975,10 @@ cw.addEventListener('mousedown', e => {
 });
 cw.addEventListener('mousemove', e => {
   if (S.dragging) { S.vpx += e.clientX - S.dragX; S.vpy += e.clientY - S.dragY; S.dragX = e.clientX; S.dragY = e.clientY; redraw(); return; }
-  if (S.mode === 'effects') {
-    if (S.painting && S.tool !== 'move') {
-      paintMask(e.clientX, e.clientY, S.paintVal, S.fx.brushSize);
-      renderEffects();
-    } else if (S.tool !== 'move') {
-      // Cursor tracking -- rerender only when cell changes or enters/exits grid
-      const newCell = screenToMask(e.clientX, e.clientY);
-      const changed = !newCell !== !_curCell || (newCell && _curCell &&
-        (newCell[0] !== _curCell[0] || newCell[1] !== _curCell[1]));
-      if (changed) { _curCell = newCell; renderEffects(); }
-    }
+  if (S.painting && S.mode === 'effects') {
+    paintMask(e.clientX, e.clientY, S.paintVal, S.fx.brushSize);
+    renderEffects();
   }
-});
-cw.addEventListener('mouseleave', () => {
-  if (_curCell !== null) { _curCell = null; if (S.mode === 'effects') renderEffects(); }
 });
 document.addEventListener('mouseup', e => {
   S.dragging = false; S.painting = false; cw.classList.remove('cg');
