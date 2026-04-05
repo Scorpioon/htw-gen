@@ -103,16 +103,6 @@ function renderEffects() {
   // Draw real-time overlays (checker, markers, noise) – these are not baked yet
   const cellSize = DEPTHS[S.fx.depth];
 
-  // Live mask preview -- translucent blue per painted cell (renderEffects only, never baked or exported)
-  if (S.mask) {
-    const cszP = cellSize * S.vz;
-    ctx.fillStyle = 'rgba(0,68,253,0.18)';
-    for (let my = 0; my < S.mh; my++) for (let mx = 0; mx < S.mw; mx++) {
-      if (!S.mask[my * S.mw + mx]) continue;
-      ctx.fillRect(ox + mx * cszP, oy + my * cszP, cszP, cszP);
-    }
-  }
-
   // Checker (if enabled and mask present)
   if (S.fx.checker && S.mask) {
     const cszS = cellSize * S.vz;
@@ -692,7 +682,7 @@ function updateSidebar() {
 
 // Sidebar rendering helpers
 const sec = (l, b) => `<div class="sbs"><span class="sbl">${l}</span>${b}</div><div class="sbs"><div class="sbdiv"></div></div>`;
-const tog = (id, l, on, k = '') => `<div class="tog${on ? ' on' : ''}" data-t="${id}"><span class="togl">${l}</span>${k ? `<span class="togk">[${k}]</span>` : ''}<div class="togp${on ? ' on' : ''}">${on ? 'ON' : 'OFF'}</div></div>`;
+const tog = (id, l, on, k = '') => `<div class="tog" data-t="${id}"><span class="togl">${l}</span>${k ? `<span class="togk">[${k}]</span>` : ''}<div class="togp${on ? ' on' : ''}">${on ? 'ON' : 'OFF'}</div></div>`;
 const sld = (id, l, v, mn, mx, st = 1, dp = 0) => `<div class="slrow"><label>${l}</label><span class="slval" id="sv-${id}">${dp ? v.toFixed(dp) : Math.round(v)}</span><input type="range" id="sl-${id}" min="${mn}" max="${mx}" step="${st}" value="${v}"></div>`;
 const brow = items => `<div class="brow">${items.map(it => `<button class="b${it.on ? ' on' : ''}" id="${it.id}">${it.l}</button>`).join('')}</div>`;
 const bgrd = items => `<div class="bgrid">${items.map(it => `<button class="b${it.on ? ' on' : ''}" id="${it.id}">${it.l}</button>`).join('')}</div>`;
@@ -787,22 +777,22 @@ function sbEffects() {
     layersHtml += '</div><div class="sbs"><div class="sbdiv"></div></div>';
   }
 
-  return sec('BASE IMAGE', tog('ecolor', 'Color', fx.colorMode, 'C') + tog('egrid', 'Grid overlay', fx.grid, 'G'))
+  return sec('BASE IMAGE', tog('ecolor', 'Color', 'C', fx.colorMode) + tog('egrid', 'Grid overlay', 'G', fx.grid))
     + sec('BRUSH', sld('ebrush', 'Brush size (px)', fx.brushSize, 4, 128, 2))
     + sec('CHECKER PATTERN',
-      tog('echk', 'Enable', fx.checker, 'K') +
+      tog('echk', 'Enable  [K]', '', fx.checker) +
       (fx.checker ?
         sec('CELL SIZE', deptBtns('fxdepth', fx.depth)) +
         `<button class="abtn apply" id="ebk">${hasMask ? '↵  APPLY CHECKER  [Enter]' : 'Paint a zone first…'}</button>` : ''))
     + layersHtml
     + (S.bakeStack.length ? `<div class="sbs"><button class="abtn warn" id="eubk">↺  Undo last bake</button><button class="abtn danger" id="eclr">✕  Clear all bakes</button></div><div class="sbs"><div class="sbdiv"></div></div>` : '')
     + sec('RAILS',
-      tog('rail1', 'Rail 1', fx.rail1) +
-      (fx.rail1 ? tog('rail1Border', 'Border', fx.rail1Border) : '') +
-      tog('rail2', 'Rail 2', fx.rail2) +
-      tog('rail3', 'Rail 3', fx.rail3) +
+      tog('rail1', 'Rail 1', '', fx.rail1) +
+      (fx.rail1 ? tog('rail1Border', 'Border', '', fx.rail1Border) : '') +
+      tog('rail2', 'Rail 2', '', fx.rail2) +
+      tog('rail3', 'Rail 3', '', fx.rail3) +
       sld('seed', 'Seed', fx.seed, 0, 9999))
-    + sec('NOISE', tog('noise', 'HTW noise', fx.noise))
+    + sec('NOISE', tog('noise', 'HTW noise', '', fx.noise))
     + sec('PALETTE [P]', p2g(fx.palIdx, P2, 'data-pfx'));
 }
 

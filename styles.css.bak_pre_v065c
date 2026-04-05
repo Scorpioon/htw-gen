@@ -193,14 +193,11 @@ canvas {
   display: flex;
   align-items: center;
   justify-content: center;
-  pointer-events: none;
-  opacity: 0;
-  transition: opacity .15s
+  pointer-events: none
 }
 
 #drop.vis {
-  pointer-events: all;
-  opacity: 1
+  pointer-events: all
 }
 
 .dh {
@@ -295,7 +292,7 @@ canvas {
 
 .sbl {
   font: 8px/1 monospace;
-  color: var(--dim);
+  color: var(--mut);
   letter-spacing: .08em;
   padding: 7px 0 5px;
   text-transform: uppercase;
@@ -447,15 +444,6 @@ canvas {
   background: var(--blue);
   color: #fff;
   border-color: var(--blue)
-}
-
-.tog.on {
-  background: rgba(0,68,253,0.07);
-  box-shadow: inset 2px 0 0 var(--blue)
-}
-
-.tog.on .togl {
-  color: var(--text)
 }
 
 .slrow {
@@ -685,5 +673,5 @@ input[type=range] {
   flex: 1;
   text-align: right;
   font: 8px/1 monospace;
-  color: var(--dim)
+  color: var(--mut)
 }
