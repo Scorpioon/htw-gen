@@ -3,7 +3,7 @@
 
 <head>
   <meta charset="utf-8" />
-  <title>HTW GENERATOR v0.6.5d</title>
+  <title>HTW GENERATOR v0.6.5c</title>
   <link rel="stylesheet" href="styles.css">
   <!-- Core modules -->
   <script src="core/palette.js"></script>
@@ -27,7 +27,7 @@
     <button id="btn-open">O · OPEN</button>
     <button class="tab" id="btn-help">? · HELP</button>
     <div class="flex1"></div>
-    <div class="topinfo">COLLAPSE CREATIVE · HTW GENERATOR · v0.6.5d</div>
+    <div class="topinfo">COLLAPSE CREATIVE · HTW GENERATOR · v0.6.5c</div>
   </div>
   <div id="toolbar">
     <button class="tb on" id="t-move" title="Move / Pan [V]">⊹</button>

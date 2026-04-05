@@ -106,13 +106,10 @@ function renderEffects() {
   // Live mask preview -- translucent blue per painted cell (renderEffects only, never baked or exported)
   if (S.mask) {
     const cszP = cellSize * S.vz;
-    ctx.fillStyle = 'rgba(0,68,253,0.30)';
-    ctx.strokeStyle = 'rgba(0,68,253,0.55)';
-    ctx.lineWidth = 1;
+    ctx.fillStyle = 'rgba(0,68,253,0.18)';
     for (let my = 0; my < S.mh; my++) for (let mx = 0; mx < S.mw; mx++) {
       if (!S.mask[my * S.mw + mx]) continue;
       ctx.fillRect(ox + mx * cszP, oy + my * cszP, cszP, cszP);
-      ctx.strokeRect(ox + mx * cszP + 0.5, oy + my * cszP + 0.5, cszP - 1, cszP - 1);
     }
   }
 
@@ -175,7 +172,7 @@ function drawMarkers(ctx, iw, ih, ox, oy, fg, bg, seed, vz) {
   if (S.fx.rail1Border && S.fx.rail1) {
     // Draw continuous border line on outermost cells (distance 1)
     ctx.fillStyle = rgb(fg);
-    const borderCells = getRailCells(cols, rows, 0);
+    const borderCells = getRailCells(cols, rows, 1);
     for (let [c, r] of borderCells) {
       ctx.fillRect(ox + c * cellSize * vz, oy + r * cellSize * vz, cellSize * vz, cellSize * vz);
     }
@@ -187,7 +184,7 @@ function drawMarkers(ctx, iw, ih, ox, oy, fg, bg, seed, vz) {
       let rng = railSeed;
       const rand = () => { rng = (rng * 1664525 + 1013904223) & 0xFFFFFFFF; return (rng >>> 0) / 0x100000000; };
 
-      const cells = getRailCells(cols, rows, rail - 1);
+      const cells = getRailCells(cols, rows, rail);
       // Shuffle deterministically
       for (let i = cells.length - 1; i > 0; i--) {
         const j = Math.floor(rand() * (i + 1));
@@ -235,7 +232,7 @@ function drawNoise(ctx, iw, ih, ox, oy, fg, bg, seed, vz) {
     if (S.fx.rail1) {
       if (S.fx.rail1Border) {
         // Border mode: entire rail-1 ring blocked instead of scatter
-        const bCells = getRailCells(cols, rows, 0);
+        const bCells = getRailCells(cols, rows, 1);
         for (let i = 0; i < bCells.length; i++) {
           blocked.add(key(bCells[i][0], bCells[i][1]));
         }
@@ -244,7 +241,7 @@ function drawNoise(ctx, iw, ih, ox, oy, fg, bg, seed, vz) {
         const railSeed1 = seed + railOffsets[1];
         let rng2 = railSeed1;
         const rand2 = () => { rng2 = (rng2 * 1664525 + 1013904223) & 0xFFFFFFFF; return (rng2 >>> 0) / 0x100000000; };
-        const rCells1 = getRailCells(cols, rows, 0);
+        const rCells1 = getRailCells(cols, rows, 1);
         for (let i = rCells1.length - 1; i > 0; i--) {
           const j = Math.floor(rand2() * (i + 1));
           const tmp = rCells1[i]; rCells1[i] = rCells1[j]; rCells1[j] = tmp;
@@ -261,7 +258,7 @@ function drawNoise(ctx, iw, ih, ox, oy, fg, bg, seed, vz) {
       const railSeed = seed + railOffsets[rail];
       let rng2 = railSeed;
       const rand2 = () => { rng2 = (rng2 * 1664525 + 1013904223) & 0xFFFFFFFF; return (rng2 >>> 0) / 0x100000000; };
-      const rCells = getRailCells(cols, rows, rail - 1);
+      const rCells = getRailCells(cols, rows, rail);
       for (let i = rCells.length - 1; i > 0; i--) {
         const j = Math.floor(rand2() * (i + 1));
         const tmp = rCells[i]; rCells[i] = rCells[j]; rCells[j] = tmp;
@@ -527,10 +524,8 @@ function initMask() {
 
 function screenToMask(mx, my) {
   if (!S.img) return null;
-  const rect = cv.getBoundingClientRect();
-  const lx = mx - rect.left, ly = my - rect.top;
   const { ox, oy } = vOff(S.img.naturalWidth, S.img.naturalHeight);
-  const ix = (lx - ox) / S.vz, iy = (ly - oy) / S.vz;
+  const ix = (mx - ox) / S.vz, iy = (my - oy) / S.vz;
   const cellSize = DEPTHS[S.fx.depth];
   const c = Math.floor(ix / cellSize), r = Math.floor(iy / cellSize);
   if (c < 0 || c >= S.mw || r < 0 || r >= S.mh) return null;
