@@ -190,7 +190,7 @@ function drawMarkers(ctx, iw, ih, ox, oy, fg, bg, seed, vz) {
   }
 }
 
-// HTW noise drawing -- v0.6.5b: rail-blocking logic fixed (rail1Border no longer suppresses rail2/rail3)
+// HTW noise drawing -- v0.6.5a (revised): Chapter 2 empty-space rule enforced
 // Noise never appears over checker cells, rail cells, border cells, or baked visible layers
 function drawNoise(ctx, iw, ih, ox, oy, fg, bg, seed, vz) {
   const cellSize = DEPTHS[S.fx.depth];
@@ -213,48 +213,31 @@ function drawNoise(ctx, iw, ih, ox, oy, fg, bg, seed, vz) {
     }
   }
 
-  // Block rail cells -- rail1Border overrides only rail-1 scatter; rails 2/3 always independent
+  // Block rail cells -- mirrors drawMarkers logic exactly (same seed, step, shuffle order)
   if (S.fx.rail1 || S.fx.rail2 || S.fx.rail3) {
     const railOffsets = { 1: 101, 2: 202, 3: 303 };
     const step = 3;
-
-    // Rail 1: border mode blocks full ring; otherwise block scatter markers only
-    if (S.fx.rail1) {
-      if (S.fx.rail1Border) {
-        // Border mode: entire rail-1 ring blocked instead of scatter
-        const bCells = getRailCells(cols, rows, 1);
-        for (let i = 0; i < bCells.length; i++) {
-          blocked.add(key(bCells[i][0], bCells[i][1]));
-        }
-      } else {
-        // Scatter mode: block only the placed marker cells
-        const railSeed1 = seed + railOffsets[1];
-        let rng2 = railSeed1;
+    if (S.fx.rail1Border && S.fx.rail1) {
+      // Border mode: entire rail-1 ring is blocked
+      const bCells = getRailCells(cols, rows, 1);
+      for (let i = 0; i < bCells.length; i++) {
+        blocked.add(key(bCells[i][0], bCells[i][1]));
+      }
+    } else {
+      for (const rail of [1, 2, 3]) {
+        if (!S.fx['rail' + rail]) continue;
+        const railSeed = seed + railOffsets[rail];
+        let rng2 = railSeed;
         const rand2 = () => { rng2 = (rng2 * 1664525 + 1013904223) & 0xFFFFFFFF; return (rng2 >>> 0) / 0x100000000; };
-        const rCells1 = getRailCells(cols, rows, 1);
-        for (let i = rCells1.length - 1; i > 0; i--) {
+        const rCells = getRailCells(cols, rows, rail);
+        // Deterministic shuffle -- must match drawMarkers exactly
+        for (let i = rCells.length - 1; i > 0; i--) {
           const j = Math.floor(rand2() * (i + 1));
-          const tmp = rCells1[i]; rCells1[i] = rCells1[j]; rCells1[j] = tmp;
+          const tmp = rCells[i]; rCells[i] = rCells[j]; rCells[j] = tmp;
         }
-        for (let i = 0; i < rCells1.length; i += step) {
-          blocked.add(key(rCells1[i][0], rCells1[i][1]));
+        for (let i = 0; i < rCells.length; i += step) {
+          blocked.add(key(rCells[i][0], rCells[i][1]));
         }
-      }
-    }
-
-    // Rails 2 and 3: always scatter, always independent of rail1Border state
-    for (const rail of [2, 3]) {
-      if (!S.fx['rail' + rail]) continue;
-      const railSeed = seed + railOffsets[rail];
-      let rng2 = railSeed;
-      const rand2 = () => { rng2 = (rng2 * 1664525 + 1013904223) & 0xFFFFFFFF; return (rng2 >>> 0) / 0x100000000; };
-      const rCells = getRailCells(cols, rows, rail);
-      for (let i = rCells.length - 1; i > 0; i--) {
-        const j = Math.floor(rand2() * (i + 1));
-        const tmp = rCells[i]; rCells[i] = rCells[j]; rCells[j] = tmp;
-      }
-      for (let i = 0; i < rCells.length; i += step) {
-        blocked.add(key(rCells[i][0], rCells[i][1]));
       }
     }
   }

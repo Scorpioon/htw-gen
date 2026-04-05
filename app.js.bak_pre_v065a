@@ -135,25 +135,28 @@ function renderEffects() {
   updateSidebar();
 }
 
-// getRailCells -- module-scope, reused by drawMarkers and drawNoise
-// Returns all cell [col, row] pairs at exact Chebyshev distance from grid border
-function getRailCells(cols, rows, distance) {
-  const cells = [];
-  for (let r = 0; r < rows; r++) {
-    for (let c = 0; c < cols; c++) {
-      const minDist = Math.min(r, rows - 1 - r, c, cols - 1 - c);
-      if (minDist === distance) cells.push([c, r]);
-    }
-  }
-  return cells;
-}
-
 // Rail marker drawing
 function drawMarkers(ctx, iw, ih, ox, oy, fg, bg, seed, vz) {
   const cellSize = DEPTHS[S.fx.depth];
   const cols = Math.floor(iw / cellSize);
   const rows = Math.floor(ih / cellSize);
   if (cols < 5 || rows < 5) return; // need at least 5 cells to have rails
+
+  // Helper to get cells at a given Chebyshev distance from border
+  function getRailCells(distance) {
+    const cells = [];
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
+        const distToTop = r;
+        const distToBottom = rows - 1 - r;
+        const distToLeft = c;
+        const distToRight = cols - 1 - c;
+        const minDist = Math.min(distToTop, distToBottom, distToLeft, distToRight);
+        if (minDist === distance) cells.push([c, r]);
+      }
+    }
+    return cells;
+  }
 
   const railOffsets = { 1: 101, 2: 202, 3: 303 };
   const step = 3; // fixed step for sparse placement
@@ -162,7 +165,7 @@ function drawMarkers(ctx, iw, ih, ox, oy, fg, bg, seed, vz) {
   if (S.fx.rail1Border && S.fx.rail1) {
     // Draw continuous border line on outermost cells (distance 1)
     ctx.fillStyle = rgb(fg);
-    const borderCells = getRailCells(cols, rows, 1);
+    const borderCells = getRailCells(1);
     for (let [c, r] of borderCells) {
       ctx.fillRect(ox + c * cellSize * vz, oy + r * cellSize * vz, cellSize * vz, cellSize * vz);
     }
@@ -174,7 +177,7 @@ function drawMarkers(ctx, iw, ih, ox, oy, fg, bg, seed, vz) {
       let rng = railSeed;
       const rand = () => { rng = (rng * 1664525 + 1013904223) & 0xFFFFFFFF; return (rng >>> 0) / 0x100000000; };
 
-      const cells = getRailCells(cols, rows, rail);
+      const cells = getRailCells(rail);
       // Shuffle deterministically
       for (let i = cells.length - 1; i > 0; i--) {
         const j = Math.floor(rand() * (i + 1));
@@ -190,128 +193,44 @@ function drawMarkers(ctx, iw, ih, ox, oy, fg, bg, seed, vz) {
   }
 }
 
-// HTW noise drawing -- v0.6.5b: rail-blocking logic fixed (rail1Border no longer suppresses rail2/rail3)
-// Noise never appears over checker cells, rail cells, border cells, or baked visible layers
+// HTW noise drawing
 function drawNoise(ctx, iw, ih, ox, oy, fg, bg, seed, vz) {
   const cellSize = DEPTHS[S.fx.depth];
   const cols = Math.floor(iw / cellSize);
   const rows = Math.floor(ih / cellSize);
   if (cols === 0 || rows === 0) return;
 
-  // Build blocked cell set -- all cells already occupied by other effects
-  const blocked = new Set();
-  const key = (c, r) => r * cols + c;
-
-  // Block checker-masked cells
-  if (S.fx.checker && S.mask) {
-    const mCols = Math.min(cols, S.mw);
-    const mRows = Math.min(rows, S.mh);
-    for (let r = 0; r < mRows; r++) {
-      for (let c = 0; c < mCols; c++) {
-        if (S.mask[r * S.mw + c]) blocked.add(key(c, r));
-      }
-    }
-  }
-
-  // Block rail cells -- rail1Border overrides only rail-1 scatter; rails 2/3 always independent
-  if (S.fx.rail1 || S.fx.rail2 || S.fx.rail3) {
-    const railOffsets = { 1: 101, 2: 202, 3: 303 };
-    const step = 3;
-
-    // Rail 1: border mode blocks full ring; otherwise block scatter markers only
-    if (S.fx.rail1) {
-      if (S.fx.rail1Border) {
-        // Border mode: entire rail-1 ring blocked instead of scatter
-        const bCells = getRailCells(cols, rows, 1);
-        for (let i = 0; i < bCells.length; i++) {
-          blocked.add(key(bCells[i][0], bCells[i][1]));
-        }
-      } else {
-        // Scatter mode: block only the placed marker cells
-        const railSeed1 = seed + railOffsets[1];
-        let rng2 = railSeed1;
-        const rand2 = () => { rng2 = (rng2 * 1664525 + 1013904223) & 0xFFFFFFFF; return (rng2 >>> 0) / 0x100000000; };
-        const rCells1 = getRailCells(cols, rows, 1);
-        for (let i = rCells1.length - 1; i > 0; i--) {
-          const j = Math.floor(rand2() * (i + 1));
-          const tmp = rCells1[i]; rCells1[i] = rCells1[j]; rCells1[j] = tmp;
-        }
-        for (let i = 0; i < rCells1.length; i += step) {
-          blocked.add(key(rCells1[i][0], rCells1[i][1]));
-        }
-      }
-    }
-
-    // Rails 2 and 3: always scatter, always independent of rail1Border state
-    for (const rail of [2, 3]) {
-      if (!S.fx['rail' + rail]) continue;
-      const railSeed = seed + railOffsets[rail];
-      let rng2 = railSeed;
-      const rand2 = () => { rng2 = (rng2 * 1664525 + 1013904223) & 0xFFFFFFFF; return (rng2 >>> 0) / 0x100000000; };
-      const rCells = getRailCells(cols, rows, rail);
-      for (let i = rCells.length - 1; i > 0; i--) {
-        const j = Math.floor(rand2() * (i + 1));
-        const tmp = rCells[i]; rCells[i] = rCells[j]; rCells[j] = tmp;
-      }
-      for (let i = 0; i < rCells.length; i += step) {
-        blocked.add(key(rCells[i][0], rCells[i][1]));
-      }
-    }
-  }
-
-  // Block cells covered by visible baked overlay layers
-  // Composite all visible layers into one canvas then scan per-cell for any non-transparent pixel
-  // Single getImageData call per drawNoise invocation regardless of layer count
-  if (S.bakeStack.length) {
-    const compCanvas = new OffscreenCanvas(iw, ih);
-    const compCtx = compCanvas.getContext('2d');
-    for (let li = 0; li < S.bakeStack.length; li++) {
-      if (S.bakeStack[li].visible) compCtx.drawImage(S.bakeStack[li].overlayCanvas, 0, 0);
-    }
-    const compData = compCtx.getImageData(0, 0, iw, ih).data;
-    for (let r = 0; r < rows; r++) {
-      for (let c = 0; c < cols; c++) {
-        if (blocked.has(key(c, r))) continue;
-        let hit = false;
-        for (let py = r * cellSize; py < (r + 1) * cellSize && py < ih && !hit; py++) {
-          for (let px = c * cellSize; px < (c + 1) * cellSize && px < iw; px++) {
-            if (compData[(py * iw + px) * 4 + 3] > 0) { hit = true; break; }
-          }
-        }
-        if (hit) blocked.add(key(c, r));
-      }
-    }
-  }
-
-  // Luminance-driven noise placement -- empty cells only
   let rng = seed;
   const rand = () => { rng = (rng * 1664525 + 1013904223) & 0xFFFFFFFF; return (rng >>> 0) / 0x100000000; };
 
+  // Create a temporary canvas to sample luminance
   const off = new OffscreenCanvas(iw, ih);
   const offCtx = off.getContext('2d');
   offCtx.drawImage(S.img, 0, 0);
   const id = offCtx.getImageData(0, 0, iw, ih);
   const data = id.data;
 
-  const density = 0.2;
+  const density = 0.2; // fixed density factor
   ctx.fillStyle = rgb(fg);
 
   for (let r = 0; r < rows; r++) {
     for (let c = 0; c < cols; c++) {
-      if (blocked.has(key(c, r))) continue; // skip occupied cells
+      // Compute average luminance in this cell
       let totalLum = 0;
       let count = 0;
       for (let y = r * cellSize; y < (r + 1) * cellSize && y < ih; y++) {
         for (let x = c * cellSize; x < (c + 1) * cellSize && x < iw; x++) {
           const idx = (y * iw + x) * 4;
-          totalLum += 0.299 * data[idx] + 0.587 * data[idx + 1] + 0.114 * data[idx + 2];
+          const lumVal = 0.299 * data[idx] + 0.587 * data[idx + 1] + 0.114 * data[idx + 2];
+          totalLum += lumVal;
           count++;
         }
       }
       const avgLum = count ? totalLum / count : 0;
       const prob = (avgLum / 255) * density;
       if (rand() < prob) {
-        const clusterSize = 2 + Math.floor(rand() * 3);
+        // Place a small cluster of 2-4 pixels at random offsets within the cell
+        const clusterSize = 2 + Math.floor(rand() * 3); // 2-4
         for (let p = 0; p < clusterSize; p++) {
           const dx = Math.floor(rand() * cellSize);
           const dy = Math.floor(rand() * cellSize);
