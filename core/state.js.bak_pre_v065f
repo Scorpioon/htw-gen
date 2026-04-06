@@ -34,18 +34,15 @@ const S = {
         colorMode: true,
         grid: false,
         checker: true,
-        motherDepth: 3,               // global/mother size index -- drives rails, border, noise
-        checkerDepth: 3,              // checker cell size index
-        checkerUseGlobal: true,       // checker follows motherDepth when true
-        brushDepth: 3,               // brush size index
-        brushUseGlobal: true,         // brush follows motherDepth when true
+        depth: 3,                     // index into DEPTHS (16px default)
         rail1: false,
         rail2: false,
         rail3: false,
         rail1Border: false,
         seed: 42,                     // global seed for effects
         noise: false,
-        palIdx: 4
+        palIdx: 4,
+        brushSize: 20                 // now in pixels (range 4-128)
     },
     bm: {
         dither: 2,

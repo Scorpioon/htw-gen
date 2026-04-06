@@ -101,13 +101,11 @@ function renderEffects() {
   ctx.restore();
 
   // Draw real-time overlays (checker, markers, noise) – these are not baked yet
-  const checkerCellSize = DEPTHS[S.fx.checkerUseGlobal ? S.fx.motherDepth : S.fx.checkerDepth];
-  const motherCellSize = DEPTHS[S.fx.motherDepth];
-  const brushCellSize  = DEPTHS[S.fx.brushUseGlobal   ? S.fx.motherDepth : S.fx.brushDepth];
+  const cellSize = DEPTHS[S.fx.depth];
 
   // Live mask preview -- translucent blue per painted cell (renderEffects only, never baked or exported)
   if (S.mask) {
-    const cszP = checkerCellSize * S.vz;
+    const cszP = cellSize * S.vz;
     ctx.fillStyle = 'rgba(0,68,253,0.30)';
     ctx.strokeStyle = 'rgba(0,68,253,0.55)';
     ctx.lineWidth = 1;
@@ -120,7 +118,7 @@ function renderEffects() {
 
   // Checker (if enabled and mask present)
   if (S.fx.checker && S.mask) {
-    const cszS = checkerCellSize * S.vz;
+    const cszS = cellSize * S.vz;
     for (let my = 0; my < S.mh; my++) for (let mx = 0; mx < S.mw; mx++) {
       if (!S.mask[my * S.mw + mx]) continue;
       ctx.fillStyle = rgb(((mx + my) & 1) === 0 ? fg : bg);
@@ -140,7 +138,7 @@ function renderEffects() {
 
   // Grid overlay
   if (S.fx.grid) {
-    const gsz = motherCellSize * S.vz;
+    const gsz = cellSize * S.vz;
     ctx.strokeStyle = 'rgba(0,68,253,0.18)'; ctx.lineWidth = 0.5;
     for (let x = ox; x < ox + dw; x += gsz) { ctx.beginPath(); ctx.moveTo(x, oy); ctx.lineTo(x, oy + dh); ctx.stroke(); }
     for (let y = oy; y < oy + dh; y += gsz) { ctx.beginPath(); ctx.moveTo(ox, y); ctx.lineTo(ox + dw, y); ctx.stroke(); }
@@ -149,12 +147,12 @@ function renderEffects() {
   // Live authoring cursor preview -- drawn last, above checker / markers / noise / grid
   if (_curCell && S.mode === 'effects' && S.tool !== 'move') {
     const [cc, cr] = _curCell;
-    const cszA = checkerCellSize * S.vz;
-    const previewCols = Math.floor(iw / checkerCellSize);
-    const previewRows = Math.floor(ih / checkerCellSize);
+    const cszA = cellSize * S.vz;
+    const previewCols = Math.floor(iw / cellSize);
+    const previewRows = Math.floor(ih / cellSize);
     if (S.tool === 'brush') {
       ctx.fillStyle = 'rgba(0,68,253,0.45)';
-      const cellRadius = Math.max(1, Math.floor(brushCellSize / checkerCellSize));
+      const cellRadius = Math.max(1, Math.floor(S.fx.brushSize / cellSize));
       for (let dr = -cellRadius; dr <= cellRadius; dr++) for (let dc = -cellRadius; dc <= cellRadius; dc++) {
         if (dc * dc + dr * dr > cellRadius * cellRadius) continue;
         const px = cc + dc, py = cr + dr;
@@ -163,7 +161,7 @@ function renderEffects() {
       }
     } else if (S.tool === 'eraser') {
       ctx.fillStyle = 'rgba(255,80,80,0.35)';
-      const cellRadius = Math.max(1, Math.floor(brushCellSize / checkerCellSize));
+      const cellRadius = Math.max(1, Math.floor(S.fx.brushSize / cellSize));
       for (let dr = -cellRadius; dr <= cellRadius; dr++) for (let dc = -cellRadius; dc <= cellRadius; dc++) {
         if (dc * dc + dr * dr > cellRadius * cellRadius) continue;
         const px = cc + dc, py = cr + dr;
@@ -210,7 +208,7 @@ function getRailCells(cols, rows, distance) {
 
 // Rail marker drawing
 function drawMarkers(ctx, iw, ih, ox, oy, fg, bg, seed, vz) {
-  const cellSize = DEPTHS[S.fx.motherDepth];
+  const cellSize = DEPTHS[S.fx.depth];
   const cols = Math.floor(iw / cellSize);
   const rows = Math.floor(ih / cellSize);
   if (cols < 5 || rows < 5) return; // need at least 5 cells to have rails
@@ -253,38 +251,22 @@ function drawMarkers(ctx, iw, ih, ox, oy, fg, bg, seed, vz) {
 // HTW noise drawing -- v0.6.5b: rail-blocking logic fixed (rail1Border no longer suppresses rail2/rail3)
 // Noise never appears over checker cells, rail cells, border cells, or baked visible layers
 function drawNoise(ctx, iw, ih, ox, oy, fg, bg, seed, vz) {
-  const motherCS = DEPTHS[S.fx.motherDepth];
-  const cols = Math.max(1, Math.floor(iw / motherCS));
-  const rows = Math.max(1, Math.floor(ih / motherCS));
+  const cellSize = DEPTHS[S.fx.depth];
+  const cols = Math.floor(iw / cellSize);
+  const rows = Math.floor(ih / cellSize);
   if (cols === 0 || rows === 0) return;
 
   // Build blocked cell set -- all cells already occupied by other effects
   const blocked = new Set();
   const key = (c, r) => r * cols + c;
 
-  // Block checker-masked cells -- bidirectional resolution mapping (both from DEPTHS powers of 2)
+  // Block checker-masked cells
   if (S.fx.checker && S.mask) {
-    const checkerCS = DEPTHS[S.fx.checkerUseGlobal ? S.fx.motherDepth : S.fx.checkerDepth];
-    if (motherCS >= checkerCS) {
-      // Case A: one noise cell may overlap multiple checker cells
-      const ratio = motherCS / checkerCS;
-      for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
-        let hit = false;
-        outer: for (let dr = 0; dr < ratio; dr++) for (let dc = 0; dc < ratio; dc++) {
-          const mc = c * ratio + dc, mr = r * ratio + dr;
-          if (mc < S.mw && mr < S.mh && S.mask[mr * S.mw + mc]) { hit = true; break outer; }
-        }
-        if (hit) blocked.add(key(c, r));
-      }
-    } else {
-      // Case B: one checker cell overlaps multiple noise cells
-      const ratio = checkerCS / motherCS;
-      for (let mr = 0; mr < S.mh; mr++) for (let mc = 0; mc < S.mw; mc++) {
-        if (!S.mask[mr * S.mw + mc]) continue;
-        for (let dr = 0; dr < ratio; dr++) for (let dc = 0; dc < ratio; dc++) {
-          const nc = mc * ratio + dc, nr = mr * ratio + dr;
-          if (nc < cols && nr < rows) blocked.add(key(nc, nr));
-        }
+    const mCols = Math.min(cols, S.mw);
+    const mRows = Math.min(rows, S.mh);
+    for (let r = 0; r < mRows; r++) {
+      for (let c = 0; c < mCols; c++) {
+        if (S.mask[r * S.mw + c]) blocked.add(key(c, r));
       }
     }
   }
@@ -377,8 +359,8 @@ function drawNoise(ctx, iw, ih, ox, oy, fg, bg, seed, vz) {
       if (blocked.has(key(c, r))) continue; // skip occupied cells
       let totalLum = 0;
       let count = 0;
-      for (let y = r * motherCS; y < (r + 1) * motherCS && y < ih; y++) {
-        for (let x = c * motherCS; x < (c + 1) * motherCS && x < iw; x++) {
+      for (let y = r * cellSize; y < (r + 1) * cellSize && y < ih; y++) {
+        for (let x = c * cellSize; x < (c + 1) * cellSize && x < iw; x++) {
           const idx = (y * iw + x) * 4;
           totalLum += 0.299 * data[idx] + 0.587 * data[idx + 1] + 0.114 * data[idx + 2];
           count++;
@@ -389,10 +371,10 @@ function drawNoise(ctx, iw, ih, ox, oy, fg, bg, seed, vz) {
       if (rand() < prob) {
         const clusterSize = 2 + Math.floor(rand() * 3);
         for (let p = 0; p < clusterSize; p++) {
-          const dx = Math.floor(rand() * motherCS);
-          const dy = Math.floor(rand() * motherCS);
-          const x = ox + (c * motherCS + dx) * vz;
-          const y = oy + (r * motherCS + dy) * vz;
+          const dx = Math.floor(rand() * cellSize);
+          const dy = Math.floor(rand() * cellSize);
+          const x = ox + (c * cellSize + dx) * vz;
+          const y = oy + (r * cellSize + dy) * vz;
           ctx.fillRect(x, y, Math.max(1, Math.floor(vz)), Math.max(1, Math.floor(vz)));
         }
       }
@@ -542,7 +524,7 @@ function bake() {
   octx.clearRect(0, 0, iw, ih);
   octx.imageSmoothingEnabled = false;
 
-  const cellSize = DEPTHS[S.fx.checkerUseGlobal ? S.fx.motherDepth : S.fx.checkerDepth];
+  const cellSize = DEPTHS[S.fx.depth];
 
   // Draw checker if enabled and mask present
   if (S.fx.checker && S.mask) {
@@ -586,8 +568,8 @@ function clearBakes() {
 // Mask handling (unchanged except brushSize interpretation)
 function initMask() {
   if (!S.img) return;
-  const cellSize = DEPTHS[S.fx.checkerUseGlobal ? S.fx.motherDepth : S.fx.checkerDepth];
-  const mw = Math.max(1, Math.floor(S.img.naturalWidth / cellSize)), mh = Math.max(1, Math.floor(S.img.naturalHeight / cellSize));
+  const cellSize = DEPTHS[S.fx.depth];
+  const mw = Math.ceil(S.img.naturalWidth / cellSize), mh = Math.ceil(S.img.naturalHeight / cellSize);
   if (!S.mask || S.mw !== mw || S.mh !== mh) { S.mask = new Uint8Array(mw * mh); S.mw = mw; S.mh = mh; }
 }
 
@@ -597,7 +579,7 @@ function screenToMask(mx, my) {
   const lx = mx - rect.left, ly = my - rect.top;
   const { ox, oy } = vOff(S.img.naturalWidth, S.img.naturalHeight);
   const ix = (lx - ox) / S.vz, iy = (ly - oy) / S.vz;
-  const cellSize = DEPTHS[S.fx.checkerUseGlobal ? S.fx.motherDepth : S.fx.checkerDepth];
+  const cellSize = DEPTHS[S.fx.depth];
   const c = Math.floor(ix / cellSize), r = Math.floor(iy / cellSize);
   if (c < 0 || c >= S.mw || r < 0 || r >= S.mh) return null;
   return [c, r];
@@ -607,7 +589,7 @@ function paintMask(mx, my, val, pixelRadius) {
   if (!S.mask) return;
   const p = screenToMask(mx, my); if (!p) return;
   const [cc, cr] = p;
-  const cellSize = DEPTHS[S.fx.checkerUseGlobal ? S.fx.motherDepth : S.fx.checkerDepth];
+  const cellSize = DEPTHS[S.fx.depth];
   const cellRadius = Math.max(1, Math.floor(pixelRadius / cellSize));
   for (let dr = -cellRadius; dr <= cellRadius; dr++) for (let dc = -cellRadius; dc <= cellRadius; dc++) {
     if (dc * dc + dr * dr > cellRadius * cellRadius) continue;
@@ -670,7 +652,7 @@ function exportPNG() {
     }
 
     // Draw current real-time overlays (if not baked)
-    const cellSize = DEPTHS[S.fx.checkerUseGlobal ? S.fx.motherDepth : S.fx.checkerDepth];
+    const cellSize = DEPTHS[S.fx.depth];
     const pal = P2[S.fx.palIdx], fg = pal.c[0], bg = pal.c[1];
 
     if (S.fx.checker && S.mask) {
@@ -859,15 +841,11 @@ function sbEffects() {
   }
 
   return sec('BASE IMAGE', tog('ecolor', 'Color', fx.colorMode, 'C') + tog('egrid', 'Grid overlay', fx.grid, 'G'))
-    + sec('GLOBAL SIZE', deptBtns('mdepth', fx.motherDepth))
-    + sec('BRUSH',
-      tog('brushGlobal', 'Use global', fx.brushUseGlobal) +
-      (fx.brushUseGlobal ? '' : sec('BRUSH SIZE', deptBtns('bdepth', fx.brushDepth))))
+    + sec('BRUSH', sld('ebrush', 'Brush size (px)', fx.brushSize, 4, 128, 2))
     + sec('CHECKER PATTERN',
       tog('echk', 'Enable', fx.checker, 'K') +
-      tog('checkerGlobal', 'Use global', fx.checkerUseGlobal) +
       (fx.checker ?
-        (fx.checkerUseGlobal ? '' : sec('CHECKER SIZE', deptBtns('cdepth', fx.checkerDepth))) +
+        sec('CELL SIZE', deptBtns('fxdepth', fx.depth)) +
         `<button class="abtn apply${hasMask ? '' : ' disabled-cta'}" id="ebk"${hasMask ? '' : ' disabled'}>${hasMask ? '↵  APPLY CHECKER  [Enter]' : 'Paint a zone first…'}</button>` : ''))
     + layersHtml
     + (S.bakeStack.length ? `<div class="sbs"><button class="abtn warn" id="eubk">↺  Undo last bake</button><button class="abtn danger" id="eclr">✕  Clear all bakes</button></div><div class="sbs"><div class="sbdiv"></div></div>` : '')
@@ -937,22 +915,7 @@ function wireUI() {
     const id = t.id; if (!id) return;
     if (id.startsWith('ipx-')) { S.icon.size = DEPTHS[+id.split('-')[1]]; dProc(); return; }
     if (id.startsWith('bpx-')) { S.bm.depth = +id.split('-')[1]; dProc(); return; }
-    if (id.startsWith('mdepth-')) {
-      const prevEff = S.fx.checkerUseGlobal ? S.fx.motherDepth : S.fx.checkerDepth;
-      S.fx.motherDepth = +id.split('-')[1];
-      const nextEff = S.fx.checkerUseGlobal ? S.fx.motherDepth : S.fx.checkerDepth;
-      if (prevEff !== nextEff) { S.mask = null; }
-      dProc(); return;
-    }
-    if (id.startsWith('cdepth-')) {
-      const prevEff = S.fx.checkerUseGlobal ? S.fx.motherDepth : S.fx.checkerDepth;
-      S.fx.checkerDepth = +id.split('-')[1];
-      S.fx.checkerUseGlobal = false;
-      const nextEff = S.fx.checkerDepth;
-      if (prevEff !== nextEff) { S.mask = null; }
-      dProc(); return;
-    }
-    if (id.startsWith('bdepth-')) { S.fx.brushDepth = +id.split('-')[1]; S.fx.brushUseGlobal = false; dProc(); return; }
+    if (id.startsWith('fxdepth-')) { S.fx.depth = +id.split('-')[1]; S.mask = null; dProc(); return; }
     if (id.startsWith('di-')) { S.bm.dither = +id.split('-')[1]; dProc(); return; }
     if (id.startsWith('cm-')) { S.bm.cm = +id.split('-')[1]; dProc(); return; }
     if (id.startsWith('shp-')) { S.bm.shape = +id.split('-')[1]; dProc(); return; }
@@ -976,6 +939,7 @@ function wireUI() {
     if (sv) sv.textContent = (id === 'bct') ? v.toFixed(2) : Math.round(v);
     switch (id) {
       case 'thr': S.icon.thr = v | 0; break;
+      case 'ebrush': S.fx.brushSize = v | 0; return; // brush size in pixels, no immediate redraw needed?
       case 'seed': S.fx.seed = v | 0; break;
       case 'bct': S.bm.contrast = v; break;
       // no other sliders needed
@@ -996,21 +960,6 @@ function handleToggle(id) {
     case 'rail2': S.fx.rail2 = !S.fx.rail2; break;
     case 'rail3': S.fx.rail3 = !S.fx.rail3; break;
     case 'noise': S.fx.noise = !S.fx.noise; break;
-    case 'checkerGlobal': {
-      const prevEff = S.fx.checkerUseGlobal ? S.fx.motherDepth : S.fx.checkerDepth;
-      if (S.fx.checkerUseGlobal) {
-        S.fx.checkerDepth = S.fx.motherDepth; S.fx.checkerUseGlobal = false;
-      } else {
-        S.fx.checkerDepth = S.fx.motherDepth; S.fx.checkerUseGlobal = true;
-      }
-      const nextEff = S.fx.checkerUseGlobal ? S.fx.motherDepth : S.fx.checkerDepth;
-      if (prevEff !== nextEff) S.mask = null;
-      break;
-    }
-    case 'brushGlobal':
-      S.fx.brushDepth = S.fx.motherDepth;
-      S.fx.brushUseGlobal = !S.fx.brushUseGlobal;
-      break;
   }
   dProc();
 }
@@ -1055,7 +1004,7 @@ cw.addEventListener('mousedown', e => {
   if (S.mode === 'effects') {
     if (S.tool === 'brush' || S.tool === 'eraser') {
       initMask(); S.painting = true; S.paintVal = S.tool === 'brush';
-      paintMask(e.clientX, e.clientY, S.paintVal, DEPTHS[S.fx.brushUseGlobal ? S.fx.motherDepth : S.fx.brushDepth]);
+      paintMask(e.clientX, e.clientY, S.paintVal, S.fx.brushSize);
       renderEffects();
     }
     if (S.tool === 'rect') { initMask(); _rectStart = screenToMask(e.clientX, e.clientY); }
@@ -1077,7 +1026,7 @@ cw.addEventListener('mousemove', e => {
   if (S.dragging) { S.vpx += e.clientX - S.dragX; S.vpy += e.clientY - S.dragY; S.dragX = e.clientX; S.dragY = e.clientY; redraw(); return; }
   if (S.mode === 'effects') {
     if (S.painting && S.tool !== 'move') {
-      paintMask(e.clientX, e.clientY, S.paintVal, DEPTHS[S.fx.brushUseGlobal ? S.fx.motherDepth : S.fx.brushDepth]);
+      paintMask(e.clientX, e.clientY, S.paintVal, S.fx.brushSize);
       renderEffects();
     } else if (S.tool !== 'move') {
       // Cursor tracking -- rerender only when cell changes or enters/exits grid
