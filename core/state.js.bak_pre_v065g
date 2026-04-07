@@ -34,12 +34,15 @@ const S = {
         colorMode: true,
         grid: false,
         checker: true,
-        structureDepth: 3,            // Structure Size -- drives rails, border, noise
-        checkerDepth: 3,              // Checker Size -- checker cell grid only
-        brushDepth: 3,               // Brush Size -- brush/eraser preview only
-        edgeMode: 'none',             // 'none' | 'border' | 'rail1' (mutually exclusive)
+        motherDepth: 3,               // global/mother size index -- drives rails, border, noise
+        checkerDepth: 3,              // checker cell size index
+        checkerUseGlobal: true,       // checker follows motherDepth when true
+        brushDepth: 3,               // brush size index
+        brushUseGlobal: true,         // brush follows motherDepth when true
+        rail1: false,
         rail2: false,
         rail3: false,
+        rail1Border: false,
         seed: 42,                     // global seed for effects
         noise: false,
         palIdx: 4

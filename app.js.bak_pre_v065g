@@ -101,9 +101,9 @@ function renderEffects() {
   ctx.restore();
 
   // Draw real-time overlays (checker, markers, noise) – these are not baked yet
-  const checkerCellSize = DEPTHS[S.fx.checkerDepth];
-  const motherCellSize  = DEPTHS[S.fx.structureDepth];
-  const brushCellSize   = DEPTHS[S.fx.brushDepth];
+  const checkerCellSize = DEPTHS[S.fx.checkerUseGlobal ? S.fx.motherDepth : S.fx.checkerDepth];
+  const motherCellSize = DEPTHS[S.fx.motherDepth];
+  const brushCellSize  = DEPTHS[S.fx.brushUseGlobal   ? S.fx.motherDepth : S.fx.brushDepth];
 
   // Live mask preview -- translucent blue per painted cell (renderEffects only, never baked or exported)
   if (S.mask) {
@@ -129,7 +129,7 @@ function renderEffects() {
   }
 
   // Markers (rails)
-  if (S.fx.edgeMode !== 'none' || S.fx.rail2 || S.fx.rail3) {
+  if (S.fx.rail1 || S.fx.rail2 || S.fx.rail3) {
     drawMarkers(ctx, iw, ih, ox, oy, fg, bg, S.fx.seed, S.vz);
   }
 
@@ -210,7 +210,7 @@ function getRailCells(cols, rows, distance) {
 
 // Rail marker drawing
 function drawMarkers(ctx, iw, ih, ox, oy, fg, bg, seed, vz) {
-  const cellSize = DEPTHS[S.fx.structureDepth];
+  const cellSize = DEPTHS[S.fx.motherDepth];
   const cols = Math.floor(iw / cellSize);
   const rows = Math.floor(ih / cellSize);
   if (cols < 5 || rows < 5) return; // need at least 5 cells to have rails
@@ -218,21 +218,18 @@ function drawMarkers(ctx, iw, ih, ox, oy, fg, bg, seed, vz) {
   const railOffsets = { 1: 101, 2: 202, 3: 303 };
   const step = 3; // fixed step for sparse placement
 
-  // Border mode: continuous solid border ring (edgeMode === 'border')
-  if (S.fx.edgeMode === 'border') {
+  // Rail 1 border mode overrides rail1 markers
+  if (S.fx.rail1Border && S.fx.rail1) {
+    // Draw continuous border line on outermost cells (distance 1)
     ctx.fillStyle = rgb(fg);
     const borderCells = getRailCells(cols, rows, 0);
     for (let [c, r] of borderCells) {
       ctx.fillRect(ox + c * cellSize * vz, oy + r * cellSize * vz, cellSize * vz, cellSize * vz);
     }
-  }
-
-  // Rail scatter: Rail 1 only when edgeMode === 'rail1'; Rail 2/3 independent
-  const activeRails = [];
-  if (S.fx.edgeMode === 'rail1') activeRails.push(1);
-  if (S.fx.rail2) activeRails.push(2);
-  if (S.fx.rail3) activeRails.push(3);
-  for (let rail of activeRails) {
+  } else {
+    // For each enabled rail, place markers using derived seed and shuffle
+    for (let rail of [1, 2, 3]) {
+      if (!S.fx[`rail${rail}`]) continue;
       const railSeed = seed + railOffsets[rail];
       let rng = railSeed;
       const rand = () => { rng = (rng * 1664525 + 1013904223) & 0xFFFFFFFF; return (rng >>> 0) / 0x100000000; };
@@ -249,13 +246,14 @@ function drawMarkers(ctx, iw, ih, ox, oy, fg, bg, seed, vz) {
         ctx.fillStyle = rgb(fg);
         ctx.fillRect(ox + c * cellSize * vz, oy + r * cellSize * vz, cellSize * vz, cellSize * vz);
       }
+    }
   }
 }
 
-// HTW noise drawing -- v0.6.5g: edgeMode replaces rail1/rail1Border; bidirectional checker blocking
+// HTW noise drawing -- v0.6.5b: rail-blocking logic fixed (rail1Border no longer suppresses rail2/rail3)
 // Noise never appears over checker cells, rail cells, border cells, or baked visible layers
 function drawNoise(ctx, iw, ih, ox, oy, fg, bg, seed, vz) {
-  const motherCS = DEPTHS[S.fx.structureDepth];
+  const motherCS = DEPTHS[S.fx.motherDepth];
   const cols = Math.max(1, Math.floor(iw / motherCS));
   const rows = Math.max(1, Math.floor(ih / motherCS));
   if (cols === 0 || rows === 0) return;
@@ -266,7 +264,7 @@ function drawNoise(ctx, iw, ih, ox, oy, fg, bg, seed, vz) {
 
   // Block checker-masked cells -- bidirectional resolution mapping (both from DEPTHS powers of 2)
   if (S.fx.checker && S.mask) {
-    const checkerCS = DEPTHS[S.fx.checkerDepth];
+    const checkerCS = DEPTHS[S.fx.checkerUseGlobal ? S.fx.motherDepth : S.fx.checkerDepth];
     if (motherCS >= checkerCS) {
       // Case A: one noise cell may overlap multiple checker cells
       const ratio = motherCS / checkerCS;
@@ -291,33 +289,36 @@ function drawNoise(ctx, iw, ih, ox, oy, fg, bg, seed, vz) {
     }
   }
 
-  // Block structure overlays: edgeMode (border/rail1) and rails 2/3
-  if (S.fx.edgeMode !== 'none' || S.fx.rail2 || S.fx.rail3) {
+  // Block rail cells -- rail1Border overrides only rail-1 scatter; rails 2/3 always independent
+  if (S.fx.rail1 || S.fx.rail2 || S.fx.rail3) {
     const railOffsets = { 1: 101, 2: 202, 3: 303 };
     const step = 3;
 
-    if (S.fx.edgeMode === 'border') {
-      // Border mode: block entire outermost ring
-      const bCells = getRailCells(cols, rows, 0);
-      for (let i = 0; i < bCells.length; i++) {
-        blocked.add(key(bCells[i][0], bCells[i][1]));
-      }
-    } else if (S.fx.edgeMode === 'rail1') {
-      // Rail 1 scatter: block placed marker cells only
-      const railSeed1 = seed + railOffsets[1];
-      let rng2 = railSeed1;
-      const rand2 = () => { rng2 = (rng2 * 1664525 + 1013904223) & 0xFFFFFFFF; return (rng2 >>> 0) / 0x100000000; };
-      const rCells1 = getRailCells(cols, rows, 0);
-      for (let i = rCells1.length - 1; i > 0; i--) {
-        const j = Math.floor(rand2() * (i + 1));
-        const tmp = rCells1[i]; rCells1[i] = rCells1[j]; rCells1[j] = tmp;
-      }
-      for (let i = 0; i < rCells1.length; i += step) {
-        blocked.add(key(rCells1[i][0], rCells1[i][1]));
+    // Rail 1: border mode blocks full ring; otherwise block scatter markers only
+    if (S.fx.rail1) {
+      if (S.fx.rail1Border) {
+        // Border mode: entire rail-1 ring blocked instead of scatter
+        const bCells = getRailCells(cols, rows, 0);
+        for (let i = 0; i < bCells.length; i++) {
+          blocked.add(key(bCells[i][0], bCells[i][1]));
+        }
+      } else {
+        // Scatter mode: block only the placed marker cells
+        const railSeed1 = seed + railOffsets[1];
+        let rng2 = railSeed1;
+        const rand2 = () => { rng2 = (rng2 * 1664525 + 1013904223) & 0xFFFFFFFF; return (rng2 >>> 0) / 0x100000000; };
+        const rCells1 = getRailCells(cols, rows, 0);
+        for (let i = rCells1.length - 1; i > 0; i--) {
+          const j = Math.floor(rand2() * (i + 1));
+          const tmp = rCells1[i]; rCells1[i] = rCells1[j]; rCells1[j] = tmp;
+        }
+        for (let i = 0; i < rCells1.length; i += step) {
+          blocked.add(key(rCells1[i][0], rCells1[i][1]));
+        }
       }
     }
 
-    // Rails 2 and 3: always scatter, always independent of edgeMode
+    // Rails 2 and 3: always scatter, always independent of rail1Border state
     for (const rail of [2, 3]) {
       if (!S.fx['rail' + rail]) continue;
       const railSeed = seed + railOffsets[rail];
@@ -541,7 +542,7 @@ function bake() {
   octx.clearRect(0, 0, iw, ih);
   octx.imageSmoothingEnabled = false;
 
-  const cellSize = DEPTHS[S.fx.checkerDepth];
+  const cellSize = DEPTHS[S.fx.checkerUseGlobal ? S.fx.motherDepth : S.fx.checkerDepth];
 
   // Draw checker if enabled and mask present
   if (S.fx.checker && S.mask) {
@@ -552,8 +553,16 @@ function bake() {
     }
   }
 
-  // Structure overlays (border/rails/noise) remain live -- not baked into committed layers.
-  // Bake commits checker content only.
+  // Draw markers (rails)
+  if (S.fx.rail1 || S.fx.rail2 || S.fx.rail3) {
+    drawMarkers(octx, iw, ih, 0, 0, fg, bg, S.fx.seed, 1);
+  }
+
+  // Draw noise
+  if (S.fx.noise) {
+    drawNoise(octx, iw, ih, 0, 0, fg, bg, S.fx.seed, 1);
+  }
+
   S.bakeStack.push({ overlayCanvas: overlay, visible: true });
   S.mask = null; // clear mask after baking
   renderEffects();
@@ -577,7 +586,7 @@ function clearBakes() {
 // Mask handling (unchanged except brushSize interpretation)
 function initMask() {
   if (!S.img) return;
-  const cellSize = DEPTHS[S.fx.checkerDepth];
+  const cellSize = DEPTHS[S.fx.checkerUseGlobal ? S.fx.motherDepth : S.fx.checkerDepth];
   const mw = Math.max(1, Math.floor(S.img.naturalWidth / cellSize)), mh = Math.max(1, Math.floor(S.img.naturalHeight / cellSize));
   if (!S.mask || S.mw !== mw || S.mh !== mh) { S.mask = new Uint8Array(mw * mh); S.mw = mw; S.mh = mh; }
 }
@@ -588,7 +597,7 @@ function screenToMask(mx, my) {
   const lx = mx - rect.left, ly = my - rect.top;
   const { ox, oy } = vOff(S.img.naturalWidth, S.img.naturalHeight);
   const ix = (lx - ox) / S.vz, iy = (ly - oy) / S.vz;
-  const cellSize = DEPTHS[S.fx.checkerDepth];
+  const cellSize = DEPTHS[S.fx.checkerUseGlobal ? S.fx.motherDepth : S.fx.checkerDepth];
   const c = Math.floor(ix / cellSize), r = Math.floor(iy / cellSize);
   if (c < 0 || c >= S.mw || r < 0 || r >= S.mh) return null;
   return [c, r];
@@ -598,7 +607,7 @@ function paintMask(mx, my, val, pixelRadius) {
   if (!S.mask) return;
   const p = screenToMask(mx, my); if (!p) return;
   const [cc, cr] = p;
-  const cellSize = DEPTHS[S.fx.checkerDepth];
+  const cellSize = DEPTHS[S.fx.checkerUseGlobal ? S.fx.motherDepth : S.fx.checkerDepth];
   const cellRadius = Math.max(1, Math.floor(pixelRadius / cellSize));
   for (let dr = -cellRadius; dr <= cellRadius; dr++) for (let dc = -cellRadius; dc <= cellRadius; dc++) {
     if (dc * dc + dr * dr > cellRadius * cellRadius) continue;
@@ -661,7 +670,7 @@ function exportPNG() {
     }
 
     // Draw current real-time overlays (if not baked)
-    const cellSize = DEPTHS[S.fx.checkerDepth];
+    const cellSize = DEPTHS[S.fx.checkerUseGlobal ? S.fx.motherDepth : S.fx.checkerDepth];
     const pal = P2[S.fx.palIdx], fg = pal.c[0], bg = pal.c[1];
 
     if (S.fx.checker && S.mask) {
@@ -672,8 +681,14 @@ function exportPNG() {
       }
     }
 
-    // Structure overlays (border/rails/noise) are live authoring aids -- not exported.
-    // Export contains: base image + baked layers + current live checker zone only.
+    if (S.fx.rail1 || S.fx.rail2 || S.fx.rail3) {
+      drawMarkers(ex, iw, ih, 0, 0, fg, bg, S.fx.seed, 1);
+    }
+
+    if (S.fx.noise) {
+      drawNoise(ex, iw, ih, 0, 0, fg, bg, S.fx.seed, 1);
+    }
+
     ec.convertToBlob().then(b => downloadBlob(b, `HTW_effects_${Date.now()}.png`));
   } else if (S.mode === 'icon') {
     const scale = 8;
@@ -844,21 +859,21 @@ function sbEffects() {
   }
 
   return sec('BASE IMAGE', tog('ecolor', 'Color', fx.colorMode, 'C') + tog('egrid', 'Grid overlay', fx.grid, 'G'))
-    + sec('STRUCTURE SIZE', deptBtns('sdepth', fx.structureDepth))
-    + sec('BRUSH SIZE', deptBtns('bdepth', fx.brushDepth))
+    + sec('GLOBAL SIZE', deptBtns('mdepth', fx.motherDepth))
+    + sec('BRUSH',
+      tog('brushGlobal', 'Use global', fx.brushUseGlobal) +
+      (fx.brushUseGlobal ? '' : sec('BRUSH SIZE', deptBtns('bdepth', fx.brushDepth))))
     + sec('CHECKER PATTERN',
       tog('echk', 'Enable', fx.checker, 'K') +
+      tog('checkerGlobal', 'Use global', fx.checkerUseGlobal) +
       (fx.checker ?
-        sec('CHECKER SIZE', deptBtns('cdepth', fx.checkerDepth)) +
+        (fx.checkerUseGlobal ? '' : sec('CHECKER SIZE', deptBtns('cdepth', fx.checkerDepth))) +
         `<button class="abtn apply${hasMask ? '' : ' disabled-cta'}" id="ebk"${hasMask ? '' : ' disabled'}>${hasMask ? '↵  APPLY CHECKER  [Enter]' : 'Paint a zone first…'}</button>` : ''))
     + layersHtml
     + (S.bakeStack.length ? `<div class="sbs"><button class="abtn warn" id="eubk">↺  Undo last bake</button><button class="abtn danger" id="eclr">✕  Clear all bakes</button></div><div class="sbs"><div class="sbdiv"></div></div>` : '')
-    + sec('EDGE MODE',
-      brow([
-        { id: 'edgeMode-none',   l: 'None',   on: fx.edgeMode === 'none' },
-        { id: 'edgeMode-border', l: 'Border', on: fx.edgeMode === 'border' },
-        { id: 'edgeMode-rail1',  l: 'Rail 1', on: fx.edgeMode === 'rail1' }
-      ]) +
+    + sec('RAILS',
+      tog('rail1', 'Rail 1', fx.rail1) +
+      (fx.rail1 ? tog('rail1Border', 'Border', fx.rail1Border) : '') +
       tog('rail2', 'Rail 2', fx.rail2) +
       tog('rail3', 'Rail 3', fx.rail3) +
       sld('seed', 'Seed', fx.seed, 0, 9999))
@@ -922,10 +937,22 @@ function wireUI() {
     const id = t.id; if (!id) return;
     if (id.startsWith('ipx-')) { S.icon.size = DEPTHS[+id.split('-')[1]]; dProc(); return; }
     if (id.startsWith('bpx-')) { S.bm.depth = +id.split('-')[1]; dProc(); return; }
-    if (id.startsWith('sdepth-')) { S.fx.structureDepth = +id.split('-')[1]; dProc(); return; }
-    if (id.startsWith('cdepth-')) { S.fx.checkerDepth = +id.split('-')[1]; S.mask = null; dProc(); return; }
-    if (id.startsWith('bdepth-')) { S.fx.brushDepth = +id.split('-')[1]; dProc(); return; }
-    if (id.startsWith('edgeMode-')) { S.fx.edgeMode = id.replace('edgeMode-', ''); dProc(); return; }
+    if (id.startsWith('mdepth-')) {
+      const prevEff = S.fx.checkerUseGlobal ? S.fx.motherDepth : S.fx.checkerDepth;
+      S.fx.motherDepth = +id.split('-')[1];
+      const nextEff = S.fx.checkerUseGlobal ? S.fx.motherDepth : S.fx.checkerDepth;
+      if (prevEff !== nextEff) { S.mask = null; }
+      dProc(); return;
+    }
+    if (id.startsWith('cdepth-')) {
+      const prevEff = S.fx.checkerUseGlobal ? S.fx.motherDepth : S.fx.checkerDepth;
+      S.fx.checkerDepth = +id.split('-')[1];
+      S.fx.checkerUseGlobal = false;
+      const nextEff = S.fx.checkerDepth;
+      if (prevEff !== nextEff) { S.mask = null; }
+      dProc(); return;
+    }
+    if (id.startsWith('bdepth-')) { S.fx.brushDepth = +id.split('-')[1]; S.fx.brushUseGlobal = false; dProc(); return; }
     if (id.startsWith('di-')) { S.bm.dither = +id.split('-')[1]; dProc(); return; }
     if (id.startsWith('cm-')) { S.bm.cm = +id.split('-')[1]; dProc(); return; }
     if (id.startsWith('shp-')) { S.bm.shape = +id.split('-')[1]; dProc(); return; }
@@ -964,9 +991,26 @@ function handleToggle(id) {
     case 'ecolor': S.fx.colorMode = !S.fx.colorMode; break;
     case 'egrid': S.fx.grid = !S.fx.grid; break;
     case 'echk': S.fx.checker = !S.fx.checker; break;
+    case 'rail1': S.fx.rail1 = !S.fx.rail1; break;
+    case 'rail1Border': S.fx.rail1Border = !S.fx.rail1Border; break;
     case 'rail2': S.fx.rail2 = !S.fx.rail2; break;
     case 'rail3': S.fx.rail3 = !S.fx.rail3; break;
     case 'noise': S.fx.noise = !S.fx.noise; break;
+    case 'checkerGlobal': {
+      const prevEff = S.fx.checkerUseGlobal ? S.fx.motherDepth : S.fx.checkerDepth;
+      if (S.fx.checkerUseGlobal) {
+        S.fx.checkerDepth = S.fx.motherDepth; S.fx.checkerUseGlobal = false;
+      } else {
+        S.fx.checkerDepth = S.fx.motherDepth; S.fx.checkerUseGlobal = true;
+      }
+      const nextEff = S.fx.checkerUseGlobal ? S.fx.motherDepth : S.fx.checkerDepth;
+      if (prevEff !== nextEff) S.mask = null;
+      break;
+    }
+    case 'brushGlobal':
+      S.fx.brushDepth = S.fx.motherDepth;
+      S.fx.brushUseGlobal = !S.fx.brushUseGlobal;
+      break;
   }
   dProc();
 }
@@ -998,7 +1042,7 @@ document.addEventListener('keydown', e => {
     case 'ArrowDown': if (S.mode === 'icon') { S.icon.thr = Math.max(0, S.icon.thr - 2); dProc(); } break;
     case 'n': case 'N': if (S.mode === 'effects') { S.fx.seed = Math.floor(Math.random() * 9999); dProc(); } break;
     case 'k': case 'K': if (S.mode === 'effects') { S.fx.checker = !S.fx.checker; dProc(); } break;
-    case 'j': case 'J': if (S.mode === 'effects') { S.fx.edgeMode = S.fx.edgeMode === 'rail1' ? 'none' : 'rail1'; dProc(); } break;
+    case 'j': case 'J': if (S.mode === 'effects') { S.fx.rail1 = !S.fx.rail1; dProc(); } break;
   }
 });
 document.addEventListener('keyup', e => { if (e.key === ' ') S.spaceDown = false; });
@@ -1011,7 +1055,7 @@ cw.addEventListener('mousedown', e => {
   if (S.mode === 'effects') {
     if (S.tool === 'brush' || S.tool === 'eraser') {
       initMask(); S.painting = true; S.paintVal = S.tool === 'brush';
-      paintMask(e.clientX, e.clientY, S.paintVal, DEPTHS[S.fx.brushDepth]);
+      paintMask(e.clientX, e.clientY, S.paintVal, DEPTHS[S.fx.brushUseGlobal ? S.fx.motherDepth : S.fx.brushDepth]);
       renderEffects();
     }
     if (S.tool === 'rect') { initMask(); _rectStart = screenToMask(e.clientX, e.clientY); }
@@ -1033,7 +1077,7 @@ cw.addEventListener('mousemove', e => {
   if (S.dragging) { S.vpx += e.clientX - S.dragX; S.vpy += e.clientY - S.dragY; S.dragX = e.clientX; S.dragY = e.clientY; redraw(); return; }
   if (S.mode === 'effects') {
     if (S.painting && S.tool !== 'move') {
-      paintMask(e.clientX, e.clientY, S.paintVal, DEPTHS[S.fx.brushDepth]);
+      paintMask(e.clientX, e.clientY, S.paintVal, DEPTHS[S.fx.brushUseGlobal ? S.fx.motherDepth : S.fx.brushDepth]);
       renderEffects();
     } else if (S.tool !== 'move') {
       // Cursor tracking -- rerender only when cell changes or enters/exits grid
