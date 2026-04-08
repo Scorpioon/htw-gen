@@ -27,10 +27,12 @@ const S = {
         size: 16,
         thr: 128,
         invert: false,
+        grid: false,
         fitMode: 'contain'
     },
     fx: {
         colorMode: true,
+        grid: false,
         checker: true,
         structureDepth: 3,            // Structure Size -- drives rails, border, noise
         checkerDepth: 3,              // Checker Size -- checker cell grid only

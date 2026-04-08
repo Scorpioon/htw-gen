@@ -102,7 +102,22 @@ function renderEffects() {
 
   // Draw real-time overlays (checker, markers, noise) – these are not baked yet
   const checkerCellSize = DEPTHS[S.fx.checkerDepth];
+  const motherCellSize  = DEPTHS[S.fx.structureDepth];
   const brushCellSize   = DEPTHS[S.fx.brushDepth];
+
+  // Live mask preview -- translucent blue per painted cell (renderEffects only, never baked or exported)
+  if (S.mask) {
+    const cszP = checkerCellSize * S.vz;
+    ctx.fillStyle = 'rgba(0,68,253,0.30)';
+    ctx.strokeStyle = 'rgba(0,68,253,0.55)';
+    ctx.lineWidth = 1;
+    for (let my = 0; my < S.mh; my++) for (let mx = 0; mx < S.mw; mx++) {
+      if (!S.mask[my * S.mw + mx]) continue;
+      ctx.fillRect(ox + mx * cszP, oy + my * cszP, cszP, cszP);
+      ctx.strokeRect(ox + mx * cszP + 0.5, oy + my * cszP + 0.5, cszP - 1, cszP - 1);
+    }
+  }
+
   // Checker (if enabled and mask present)
   if (S.fx.checker && S.mask) {
     const cszS = checkerCellSize * S.vz;
@@ -121,6 +136,59 @@ function renderEffects() {
   // Noise
   if (S.fx.noise) {
     drawNoise(ctx, iw, ih, ox, oy, fg, bg, S.fx.seed, S.vz);
+  }
+
+  // Grid overlay
+  if (S.fx.grid) {
+    const gsz = motherCellSize * S.vz;
+    ctx.strokeStyle = 'rgba(0,68,253,0.18)'; ctx.lineWidth = 0.5;
+    for (let x = ox; x < ox + dw; x += gsz) { ctx.beginPath(); ctx.moveTo(x, oy); ctx.lineTo(x, oy + dh); ctx.stroke(); }
+    for (let y = oy; y < oy + dh; y += gsz) { ctx.beginPath(); ctx.moveTo(ox, y); ctx.lineTo(ox + dw, y); ctx.stroke(); }
+  }
+
+  // Live authoring cursor preview -- drawn last, above checker / markers / noise / grid
+  if (_curCell && S.mode === 'effects' && S.tool !== 'move') {
+    const [cc, cr] = _curCell;
+    const cszA = checkerCellSize * S.vz;
+    const previewCols = Math.floor(iw / checkerCellSize);
+    const previewRows = Math.floor(ih / checkerCellSize);
+    if (S.tool === 'brush') {
+      ctx.fillStyle = 'rgba(0,68,253,0.45)';
+      const cellRadius = Math.max(1, Math.floor(brushCellSize / checkerCellSize));
+      for (let dr = -cellRadius; dr <= cellRadius; dr++) for (let dc = -cellRadius; dc <= cellRadius; dc++) {
+        if (dc * dc + dr * dr > cellRadius * cellRadius) continue;
+        const px = cc + dc, py = cr + dr;
+        if (px < 0 || px >= previewCols || py < 0 || py >= previewRows) continue;
+        ctx.fillRect(ox + px * cszA, oy + py * cszA, cszA, cszA);
+      }
+    } else if (S.tool === 'eraser') {
+      ctx.fillStyle = 'rgba(255,80,80,0.35)';
+      const cellRadius = Math.max(1, Math.floor(brushCellSize / checkerCellSize));
+      for (let dr = -cellRadius; dr <= cellRadius; dr++) for (let dc = -cellRadius; dc <= cellRadius; dc++) {
+        if (dc * dc + dr * dr > cellRadius * cellRadius) continue;
+        const px = cc + dc, py = cr + dr;
+        if (px < 0 || px >= previewCols || py < 0 || py >= previewRows) continue;
+        ctx.fillRect(ox + px * cszA, oy + py * cszA, cszA, cszA);
+      }
+    } else if (S.tool === 'rect') {
+      ctx.fillStyle = 'rgba(0,68,253,0.30)';
+      ctx.strokeStyle = 'rgba(0,68,253,0.70)';
+      ctx.lineWidth = 1;
+      if (_rectStart) {
+        const [c1, r1] = _rectStart;
+        const c0 = Math.min(c1, cc), c1b = Math.max(c1, cc);
+        const r0 = Math.min(r1, cr), r1b = Math.max(r1, cr);
+        for (let ry = r0; ry <= r1b; ry++) for (let rx = c0; rx <= c1b; rx++) {
+          if (rx < 0 || rx >= previewCols || ry < 0 || ry >= previewRows) continue;
+          ctx.fillRect(ox + rx * cszA, oy + ry * cszA, cszA, cszA);
+        }
+        ctx.strokeRect(ox + c0 * cszA + 0.5, oy + r0 * cszA + 0.5,
+          (c1b - c0 + 1) * cszA - 1, (r1b - r0 + 1) * cszA - 1);
+      } else {
+        ctx.fillRect(ox + cc * cszA, oy + cr * cszA, cszA, cszA);
+        ctx.strokeRect(ox + cc * cszA + 0.5, oy + cr * cszA + 0.5, cszA - 1, cszA - 1);
+      }
+    }
   }
 
   updateStatus();
@@ -760,44 +828,42 @@ function sbIcon() {
 function sbEffects() {
   const fx = S.fx;
   const hasMask = S.mask && S.mask.some(v => v);
-  const hasLayers = S.bakeStack.length > 0;
 
   let layersHtml = '';
-  if (hasLayers) {
+  if (S.bakeStack.length) {
     layersHtml = '<div class="sbs"><span class="sbl">LAYERS</span>';
     for (let i = 0; i < S.bakeStack.length; i++) {
       const layer = S.bakeStack[i];
       layersHtml += `<div class="tog" style="padding-left:4px" data-layer="${i}" data-layer-visible="${i}">
         <span class="togl">Layer ${i + 1}</span>
-        <span class="togk" data-layer-delete="${i}" style="cursor:pointer; margin-right:6px">Ã¢Å“â€¢</span>
+        <span class="togk" data-layer-delete="${i}" style="cursor:pointer; margin-right:6px">✕</span>
         <div class="togp${layer.visible ? ' on' : ''}" data-layer-visible="${i}">${layer.visible ? 'ON' : 'OFF'}</div>
       </div>`;
     }
     layersHtml += '</div><div class="sbs"><div class="sbdiv"></div></div>';
   }
 
-  return sec('PALETTE [P]', p2g(fx.palIdx, P2, 'data-pfx'))
+  return sec('BASE IMAGE', tog('ecolor', 'Color', fx.colorMode, 'C') + tog('egrid', 'Grid overlay', fx.grid, 'G'))
+    + sec('STRUCTURE SIZE', deptBtns('sdepth', fx.structureDepth))
+    + sec('BRUSH SIZE', deptBtns('bdepth', fx.brushDepth))
+    + sec('CHECKER PATTERN',
+      tog('echk', 'Enable', fx.checker, 'K') +
+      (fx.checker ?
+        sec('CHECKER SIZE', deptBtns('cdepth', fx.checkerDepth)) +
+        `<button class="abtn apply${hasMask ? '' : ' disabled-cta'}" id="ebk"${hasMask ? '' : ' disabled'}>${hasMask ? '↵  APPLY CHECKER  [Enter]' : 'Paint a zone first…'}</button>` : ''))
+    + layersHtml
+    + (S.bakeStack.length ? `<div class="sbs"><button class="abtn warn" id="eubk">↺  Undo last bake</button><button class="abtn danger" id="eclr">✕  Clear all bakes</button></div><div class="sbs"><div class="sbdiv"></div></div>` : '')
     + sec('EDGE MODE',
       brow([
         { id: 'edgeMode-none',   l: 'None',   on: fx.edgeMode === 'none' },
         { id: 'edgeMode-border', l: 'Border', on: fx.edgeMode === 'border' },
         { id: 'edgeMode-rail1',  l: 'Rail 1', on: fx.edgeMode === 'rail1' }
-      ])
-      + sec('STRUCTURE SIZE', deptBtns('sdepth', fx.structureDepth))
-      + tog('rail2', 'Rail 2', fx.rail2)
-      + tog('rail3', 'Rail 3', fx.rail3)
-      + sld('seed', 'Seed', fx.seed, 0, 9999))
-    + sec('CHECKER',
-      tog('echk', 'Enable', fx.checker, 'K')
-      + sec('CHECKER SIZE', deptBtns('cdepth', fx.checkerDepth))
-      + sec('BRUSH SIZE', deptBtns('bdepth', fx.brushDepth)))
+      ]) +
+      tog('rail2', 'Rail 2', fx.rail2) +
+      tog('rail3', 'Rail 3', fx.rail3) +
+      sld('seed', 'Seed', fx.seed, 0, 9999))
     + sec('NOISE', tog('noise', 'HTW noise', fx.noise))
-    + sec('ACTIONS',
-      `<button class="abtn apply${hasMask ? '' : ' disabled-cta'}" id="ebk"${hasMask ? '' : ' disabled'}>Apply Layer</button>`
-      + `<button class="abtn warn${hasLayers ? '' : ' disabled-cta'}" id="eubk"${hasLayers ? '' : ' disabled'}>Undo last step</button>`
-      + `<button class="abtn danger${hasLayers ? '' : ' disabled-cta'}" id="eclr"${hasLayers ? '' : ' disabled'}>Delete all layers</button>`)
-    + layersHtml
-    + sec('BASE IMAGE', tog('ecolor', 'Color', fx.colorMode, 'C'));
+    + sec('PALETTE [P]', p2g(fx.palIdx, P2, 'data-pfx'));
 }
 
 function sbBitmap() {
@@ -896,6 +962,7 @@ function handleToggle(id) {
     case 'iinv': S.icon.invert = !S.icon.invert; break;
     case 'igrid': S.icon.grid = !S.icon.grid; break;
     case 'ecolor': S.fx.colorMode = !S.fx.colorMode; break;
+    case 'egrid': S.fx.grid = !S.fx.grid; break;
     case 'echk': S.fx.checker = !S.fx.checker; break;
     case 'rail2': S.fx.rail2 = !S.fx.rail2; break;
     case 'rail3': S.fx.rail3 = !S.fx.rail3; break;
