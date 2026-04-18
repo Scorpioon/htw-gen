@@ -40,7 +40,6 @@ const S = {
         rail3: false,
         seed: 42,                     // global seed for effects
         noise: false,
-        noiseAmount: 0.5,               // contrast-driven noise density (0..1)
         palIdx: 4
     },
     bm: {

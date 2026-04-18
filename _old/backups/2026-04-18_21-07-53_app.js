@@ -30,13 +30,6 @@ function vOff(cW, cH) {
   return getViewOffset(cW, cH, S.vz, S.vpx, S.vpy, aW(), aH());
 }
 
-function fitVz() {
-  // Guard: returns 1 if no image loaded
-  if (!S.img) return 1;
-  const z = Math.min(aW() / S.img.naturalWidth, aH() / S.img.naturalHeight) * 0.9;
-  return Math.min(z, 1); // do not upscale images smaller than the canvas
-}
-
 // --- Grid processing (icon & bitmap) ---
 function processGrid() {
   if (!S.img) return;
@@ -297,54 +290,43 @@ function drawNoise(ctx, iw, ih, ox, oy, fg, bg, seed, vz) {
     }
   }
 
-  // Contrast-driven noise placement -- empty cells only
-  // High local contrast (edges/transitions) triggers noise; uniform zones do not.
-  // noiseAmount (0..1) scales the contrast threshold.
+  // Luminance-driven noise placement -- empty cells only
   let rng = seed;
   const rand = () => { rng = (rng * 1664525 + 1013904223) & 0xFFFFFFFF; return (rng >>> 0) / 0x100000000; };
 
   const off = new OffscreenCanvas(iw, ih);
   const offCtx = off.getContext('2d');
   offCtx.drawImage(S.img, 0, 0);
-  const imgData = offCtx.getImageData(0, 0, iw, ih);
-  const data = imgData.data;
+  const id = offCtx.getImageData(0, 0, iw, ih);
+  const data = id.data;
 
+  const density = 0.2;
   ctx.fillStyle = rgb(fg);
 
   for (let r = 0; r < rows; r++) {
     for (let c = 0; c < cols; c++) {
-      if (blocked.has(key(c, r))) continue;
-      // Pass 1: mean luminance
-      let sumLum = 0; let count = 0;
+      if (blocked.has(key(c, r))) continue; // skip occupied cells
+      let totalLum = 0;
+      let count = 0;
       for (let y = r * motherCS; y < (r + 1) * motherCS && y < ih; y++) {
         for (let x = c * motherCS; x < (c + 1) * motherCS && x < iw; x++) {
           const idx = (y * iw + x) * 4;
-          sumLum += 0.299 * data[idx] + 0.587 * data[idx + 1] + 0.114 * data[idx + 2];
+          totalLum += 0.299 * data[idx] + 0.587 * data[idx + 1] + 0.114 * data[idx + 2];
           count++;
         }
       }
-      if (!count) continue;
-      const meanLum = sumLum / count;
-      // Pass 2: variance -> stddev -> contrast
-      let sumSq = 0;
-      for (let y = r * motherCS; y < (r + 1) * motherCS && y < ih; y++) {
-        for (let x = c * motherCS; x < (c + 1) * motherCS && x < iw; x++) {
-          const idx = (y * iw + x) * 4;
-          const lum = 0.299 * data[idx] + 0.587 * data[idx + 1] + 0.114 * data[idx + 2];
-          const d = lum - meanLum;
-          sumSq += d * d;
+      const avgLum = count ? totalLum / count : 0;
+      const prob = (avgLum / 255) * density;
+      if (rand() < prob) {
+        const clusterSize = 2 + Math.floor(rand() * 3);
+        for (let p = 0; p < clusterSize; p++) {
+          const dx = Math.floor(rand() * motherCS);
+          const dy = Math.floor(rand() * motherCS);
+          const x = ox + (c * motherCS + dx) * vz;
+          const y = oy + (r * motherCS + dy) * vz;
+          const dotSize = Math.max(1, Math.floor(motherCS * vz / 16));
+          ctx.fillRect(x, y, dotSize, dotSize);
         }
-      }
-      const stddev = Math.sqrt(sumSq / count);
-      const contrast = stddev / 128; // normalised 0..1 (128 = max possible stddev)
-      if (rand() < contrast * S.fx.noiseAmount) {
-        // One blob per triggered cell
-        const dx = Math.floor(rand() * motherCS);
-        const dy = Math.floor(rand() * motherCS);
-        const x = ox + (c * motherCS + dx) * vz;
-        const y = oy + (r * motherCS + dy) * vz;
-        const dotSize = Math.max(1, Math.floor(motherCS * vz / 8));
-        ctx.fillRect(x, y, dotSize, dotSize);
       }
     }
   }
@@ -577,7 +559,7 @@ function loadFile(file) {
   const url = URL.createObjectURL(file);
   const img = new Image();
   img.onload = () => {
-    S.img = img; S.bakeStack = []; S.mask = null; S.vz = fitVz(); S.vpx = 0; S.vpy = 0;
+    S.img = img; S.bakeStack = []; S.mask = null; S.vz = 1; S.vpx = 0; S.vpy = 0;
     getDropOverlay().classList.remove('vis');
     getStatusImage().innerHTML = `IMG <b>${img.naturalWidth}×${img.naturalHeight}</b>`;
     dProc(); msg(`Loaded ${img.naturalWidth}×${img.naturalHeight}`);
@@ -623,14 +605,8 @@ function exportPNG() {
       }
     }
 
-    // Draw structure overlays onto export canvas at native resolution.
-    // Bake scope: checker ONLY. Export scope: checker + rails + noise (v0.6.5j).
-    if (S.fx.edgeMode !== 'none' || S.fx.rail2 || S.fx.rail3) {
-      drawMarkers(ex, iw, ih, 0, 0, fg, bg, S.fx.seed, 1);
-    }
-    if (S.fx.noise) {
-      drawNoise(ex, iw, ih, 0, 0, fg, bg, S.fx.seed, 1);
-    }
+    // Structure overlays (border/rails/noise) are live authoring aids -- not exported.
+    // Export contains: base image + baked layers + current live checker zone only.
     ec.convertToBlob().then(b => downloadBlob(b, `HTW_effects_${Date.now()}.png`));
   } else if (S.mode === 'icon') {
     const scale = 8;
@@ -816,9 +792,7 @@ function sbEffects() {
       tog('echk', 'Enable', fx.checker, 'K')
       + sec('CHECKER SIZE', deptBtns('cdepth', fx.checkerDepth))
       + sec('BRUSH SIZE', deptBtns('bdepth', fx.brushDepth)))
-    + sec('NOISE',
-      tog('noise', 'HTW noise', fx.noise) +
-      (fx.noise ? sld('noiseAmt', 'Amount', fx.noiseAmount, 0, 1, 0.05, 2) : ''))
+    + sec('NOISE', tog('noise', 'HTW noise', fx.noise))
     + sec('ACTIONS',
       `<button class="abtn apply${hasMask ? '' : ' disabled-cta'}" id="ebk"${hasMask ? '' : ' disabled'}>Apply Layer</button>`
       + `<button class="abtn warn${hasLayers ? '' : ' disabled-cta'}" id="eubk"${hasLayers ? '' : ' disabled'}>Undo last step</button>`
@@ -891,7 +865,7 @@ function wireUI() {
     if (id.startsWith('cm-')) { S.bm.cm = +id.split('-')[1]; dProc(); return; }
     if (id.startsWith('shp-')) { S.bm.shape = +id.split('-')[1]; dProc(); return; }
     if (id === 'fu') { undo(); return; } if (id === 'fr') { redo(); return; }
-    if (id === 'frs') { if (S.img) S.vz = fitVz(); else S.vz = 1; S.vpx = 0; S.vpy = 0; redraw(); updateStatus(); return; }
+    if (id === 'frs') { S.vz = 1; S.vpx = 0; S.vpy = 0; redraw(); updateStatus(); return; }
     if (id === 'fe') { exportPNG(); return; }
     if (id === 'fsvg') { const svg = exportSVG(); if (svg) downloadBlob(new Blob([svg], { type: 'image/svg+xml' }), `HTW_icon_${Date.now()}.svg`); return; }
     if (id === 'fcopy') { copySVG(); return; }
@@ -907,12 +881,12 @@ function wireUI() {
     if (e.target.type !== 'range') return;
     const id = e.target.id.replace('sl-', ''), v = parseFloat(e.target.value);
     const sv = document.getElementById('sv-' + id);
-    if (sv) sv.textContent = (id === 'bct' || id === 'noiseAmt') ? v.toFixed(2) : Math.round(v);
+    if (sv) sv.textContent = (id === 'bct') ? v.toFixed(2) : Math.round(v);
     switch (id) {
       case 'thr': S.icon.thr = v | 0; break;
       case 'seed': S.fx.seed = v | 0; break;
       case 'bct': S.bm.contrast = v; break;
-      case 'noiseAmt': S.fx.noiseAmount = parseFloat(v); break;
+      // no other sliders needed
     }
     dProc();
   });
@@ -941,7 +915,7 @@ document.addEventListener('keydown', e => {
   if (e.target.tagName === 'INPUT') return;
   if (e.key === ' ') { S.spaceDown = true; e.preventDefault(); return; }
   if ((e.ctrlKey || e.metaKey) && e.key === 'z') { if (S.mode === 'effects') undoBake(); else undo(); return; }
-  if ((e.ctrlKey || e.metaKey) && e.key === 'y') { if (S.mode !== 'effects') redo(); return; }
+  if ((e.ctrlKey || e.metaKey) && e.key === 'y') { redo(); return; }
   switch (e.key) {
     case '1': setMode('icon'); break; case '2': setMode('effects'); break; case '3': setMode('bitmap'); break;
     case 'o': case 'O': getFileInput().click(); break;
@@ -951,7 +925,7 @@ document.addEventListener('keydown', e => {
     case '?': case 'H': toggleHelp(); break;
     case 'Enter': if (S.mode === 'effects') bake(); break;
     case 'Escape': S.mask = null; dProc(); break;
-    case '0': if (S.img) S.vz = fitVz(); else S.vz = 1; S.vpx = 0; S.vpy = 0; redraw(); updateStatus(); break;
+    case '0': S.vz = 1; S.vpx = 0; S.vpy = 0; redraw(); updateStatus(); break;
     case '+': case '=': S.vz = Math.min(20, S.vz * 1.2); redraw(); updateStatus(); break;
     case '-': S.vz = Math.max(.1, S.vz / 1.2); redraw(); updateStatus(); break;
     case 'ArrowUp': if (S.mode === 'icon') { S.icon.thr = Math.min(255, S.icon.thr + 2); dProc(); } break;
@@ -1071,7 +1045,7 @@ document.getElementById('t-rect').onclick = () => setTool('rect');
 document.getElementById('t-eraser').onclick = () => setTool('eraser');
 document.getElementById('t-zi').onclick = () => { S.vz = Math.min(20, S.vz * 1.2); redraw(); updateStatus(); };
 document.getElementById('t-zo').onclick = () => { S.vz = Math.max(.1, S.vz / 1.2); redraw(); updateStatus(); };
-document.getElementById('t-zf').onclick = () => { if (S.img) S.vz = fitVz(); else S.vz = 1; S.vpx = 0; S.vpy = 0; redraw(); updateStatus(); };
+document.getElementById('t-zf').onclick = () => { S.vz = 1; S.vpx = 0; S.vpy = 0; redraw(); updateStatus(); };
 document.body.addEventListener('dragover', e => e.preventDefault());
 document.body.addEventListener('drop', e => { e.preventDefault(); const f = e.dataTransfer.files[0]; if (f) loadFile(f); });
 window.addEventListener('resize', resizeCanvas);
