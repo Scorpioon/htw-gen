@@ -297,10 +297,9 @@ function drawNoise(ctx, iw, ih, ox, oy, fg, bg, seed, vz) {
     }
   }
 
-  // Structure-coherent noise placement (v0.6.5k)
-  // One procedural decision per structure cell.
-  // Contrast drives probability; motherCS drives blob scale.
-  // noiseAmount modulates frequency only -- blob size is purely structure-derived.
+  // Contrast-driven noise placement -- empty cells only
+  // High local contrast (edges/transitions) triggers noise; uniform zones do not.
+  // noiseAmount (0..1) scales the contrast threshold.
   let rng = seed;
   const rand = () => { rng = (rng * 1664525 + 1013904223) & 0xFFFFFFFF; return (rng >>> 0) / 0x100000000; };
 
@@ -315,7 +314,7 @@ function drawNoise(ctx, iw, ih, ox, oy, fg, bg, seed, vz) {
   for (let r = 0; r < rows; r++) {
     for (let c = 0; c < cols; c++) {
       if (blocked.has(key(c, r))) continue;
-      // Pass 1: mean luminance for this structure cell
+      // Pass 1: mean luminance
       let sumLum = 0; let count = 0;
       for (let y = r * motherCS; y < (r + 1) * motherCS && y < ih; y++) {
         for (let x = c * motherCS; x < (c + 1) * motherCS && x < iw; x++) {
@@ -326,7 +325,7 @@ function drawNoise(ctx, iw, ih, ox, oy, fg, bg, seed, vz) {
       }
       if (!count) continue;
       const meanLum = sumLum / count;
-      // Pass 2: stddev -> local contrast
+      // Pass 2: variance -> stddev -> contrast
       let sumSq = 0;
       for (let y = r * motherCS; y < (r + 1) * motherCS && y < ih; y++) {
         for (let x = c * motherCS; x < (c + 1) * motherCS && x < iw; x++) {
@@ -337,14 +336,15 @@ function drawNoise(ctx, iw, ih, ox, oy, fg, bg, seed, vz) {
         }
       }
       const stddev = Math.sqrt(sumSq / count);
-      const contrast = stddev / 128; // 0..1, 128 = theoretical max stddev
+      const contrast = stddev / 128; // normalised 0..1 (128 = max possible stddev)
       if (rand() < contrast * S.fx.noiseAmount) {
-        // Blob placed at random position within the structure cell screen area
-        // blobSize is a fixed fraction of the structure cell -- always structure-coherent
-        const dx = Math.floor(rand() * motherCS * vz);
-        const dy = Math.floor(rand() * motherCS * vz);
-        const blobSize = Math.max(2, Math.floor(motherCS * vz / 3));
-        ctx.fillRect(ox + c * motherCS * vz + dx, oy + r * motherCS * vz + dy, blobSize, blobSize);
+        // One blob per triggered cell
+        const dx = Math.floor(rand() * motherCS);
+        const dy = Math.floor(rand() * motherCS);
+        const x = ox + (c * motherCS + dx) * vz;
+        const y = oy + (r * motherCS + dy) * vz;
+        const dotSize = Math.max(1, Math.floor(motherCS * vz / 8));
+        ctx.fillRect(x, y, dotSize, dotSize);
       }
     }
   }
