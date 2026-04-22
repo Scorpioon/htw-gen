@@ -631,7 +631,7 @@ function exportPNG() {
     if (S.fx.noise) {
       drawNoise(ex, iw, ih, 0, 0, fg, bg, S.fx.seed, 1);
     }
-    ec.convertToBlob().then(b => downloadBlob(b, `HTW_effects_${Date.now()}.png`));
+    ec.convertToBlob().then(b => { downloadBlob(b, `HTW_effects_${Date.now()}.png`); msg('Exported'); });
   } else if (S.mode === 'icon') {
     const scale = 8;
     const gw = 32, gh = 32;
@@ -747,6 +747,7 @@ function palMono(act) {
 }
 
 function renderSidebar() {
+  const scrollY = getSidebar().scrollTop;
   const sb = getSidebar();
   let h = `<div class="sbhead"><div class="sbmode">${S.mode.toUpperCase()} MODE</div>
 <div class="sbzoom">${Math.round(S.vz * 100)}%</div></div><div class="sbbar"></div>`;
@@ -768,6 +769,7 @@ function renderSidebar() {
 </div>
 </div>`);
   wireUI(); updateStatus();
+  getSidebar().scrollTop = scrollY;
 }
 
 function sbIcon() {
