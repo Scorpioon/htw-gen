@@ -1,0 +1,58 @@
+CONTRACT ACTIVE.
+
+MODE: AUDIT MODE
+OUTPUT: PLAN_MIN
+
+Your UI stabilization audit is accepted with small corrections before implementation briefing.
+
+Keep the lane exactly as-is:
+- Effects only
+- no logic redesign
+- no engine extraction
+- no state changes
+- no render pipeline changes
+- no wireUI() redesign
+
+Apply these corrections before writing the implementation brief:
+
+1. OUTPUT ORDER
+Prefer this order inside OUTPUT:
+- LAYERS
+- ACTIONS
+- EXPORT
+
+Reason:
+the user should first see the baked layers, then the actions operating on them, then export.
+
+2. DELETE CONTROL
+Do not treat "DEL" as a hard final truth yet.
+The current X is wrong, but the replacement should prioritize:
+- coherence with the existing UI language
+- readability
+- small width footprint
+If "Del" reads better than "DEL", prefer "Del".
+Do not use decorative iconography.
+
+3. EFX-3 FIX SHAPE
+Keep the scroll reset fix minimal:
+- save sidebar scrollTop before innerHTML replacement
+- restore it after rebuild
+- no abstractions
+- no helper system
+- no broader scroll-state logic
+
+4. CONTRAST
+Do not use a secondary tone that reads as disabled.
+Increase readability for section labels, key hints, and slider labels with practical contrast, not subtle muted styling.
+
+Now produce the implementation brief only.
+
+Return only PLAN_MIN with:
+A. final scope
+B. exact implementation decisions
+C. exact file list
+D. exact edit order
+E. validation checklist
+F. risks
+G. out-of-scope
+H. one next move only

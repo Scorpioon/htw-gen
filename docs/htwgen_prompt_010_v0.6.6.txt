@@ -1,0 +1,57 @@
+CONTRACT ACTIVE.
+
+MODE: PATCH MODE
+OUTPUT: IMPLEMENT_MIN
+
+We have a functional regression after the Effects UI stabilization pass.
+
+Observed behavior:
+- A mask is painted correctly
+- Apply button is visible
+- Clicking Apply does nothing
+- BAKES remains 0
+- No Layer 1 appears
+- Undo / Clear all remain inactive
+
+This means the issue is not just visual.
+Most likely the ACTIONS row refactor broke the Apply trigger path.
+
+Your job:
+inspect and fix only the ACTIONS row / Apply trigger regression.
+
+Do not redesign anything.
+Do not continue the UI pass.
+Do not touch Layers rendering yet.
+Do not touch renderEffects, bake logic, export logic, or state logic unless inspection proves the trigger path is broken there.
+
+Inspect exactly:
+1. sbEffects() ACTIONS row markup
+2. whether Apply / Undo / Clear still preserve their original IDs
+3. whether the current markup still works with wireUI() and its closest('[id], ...') click routing
+4. whether the horizontal row refactor changed buttons from working abtn(...) output to non-functional custom markup
+
+Goal:
+restore fully working Apply / Undo / Clear behavior first.
+
+If the safest move is to restore the original ACTIONS markup exactly as it was before the UI pass, do that.
+Functionality first.
+Visual row can be redone later.
+
+RETURN ONLY IMPLEMENT_MIN with:
+A. exact file list
+B. root cause found
+C. exact fix
+D. expected visible change
+E. validation checklist
+F. what to do next
+G. current branch
+H. committed or not
+I. pushed or not
+J. commit message suggestion
+
+IMPORTANT
+- app.js only unless absolutely impossible
+- preserve existing working bake semantics
+- no new UI ideas
+- no broader cleanup
+- restore function before polish

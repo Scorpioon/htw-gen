@@ -1,0 +1,74 @@
+CONTRACT ACTIVE.
+
+MODE: AUDIT MODE
+OUTPUT: PLAN_MIN
+
+Your revised Phase 0 close is accepted.
+
+Now do the next correct move only:
+produce the Phase 1 Icon implementation brief.
+
+Do not touch the repo yet.
+Do not implement yet.
+Do not broaden scope.
+Do not reopen Phase 0.
+Do not include Effects, Bitmap, or engine extraction.
+Do not include speculative redesign.
+
+CURRENT TRUTH
+- Repo truth: v0.6.5k
+- Target lane: v0.6.6
+- Workflow: direct repo touch with Claude CLI
+- Current phase: Phase 1 Icon brief only
+
+YOUR JOB
+Write the narrowest possible reviewed implementation brief for Icon alignment hardening.
+
+YOU MUST:
+1. Re-read only the Icon-relevant truth surfaces:
+   - product lock requirements relevant to Icon
+   - engines/icon-engine.js
+   - app.js Icon-related paths only
+   - engines/icon-editor.js
+   - core/state.js Icon state only
+   - core/palette.js only if needed for Icon comparison
+2. Identify exact mismatches between locked product truth and live repo behavior
+3. Classify each mismatch:
+   - blocker
+   - debt
+   - later
+   - interesting
+   - not now
+4. Define the exact v0.6.6 Icon scope only
+5. Define the exact files to touch only if implementation is approved
+6. Define the exact edit order
+7. Define the exact validation checklist
+8. State what explicitly stays out of v0.6.6
+9. State what should be committed separately if cleanup enters
+10. End with one next move only
+
+IMPORTANT RULES
+- No repo edits
+- No code
+- No implementation
+- No app-wide cleanup
+- No Effects/Bitmap bleed
+- No speculative density controls unless canon explicitly requires them
+- If a finding is unverified, say so clearly
+- Keep the brief implementation-ready, not essay-like
+
+RETURN ONLY THIS STRUCTURE
+
+A. Exact Icon truth surfaces used
+B. Exact mismatches found
+C. Classified findings
+D. v0.6.6 exact Icon scope
+E. Exact file list to touch if approved
+F. Exact order of edits
+G. Cleanup split (what can be separate commit vs what must stay out)
+H. Icon validation checklist
+I. Explicit out-of-scope items
+J. One next move only
+
+FINAL RULE
+This brief must be narrow enough that implementation can begin safely after user review, without reopening product direction.

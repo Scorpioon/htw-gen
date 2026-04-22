@@ -1,0 +1,122 @@
+CONTRACT ACTIVE.
+
+MODE: AUDIT MODE
+OUTPUT: PLAN_MIN
+
+You are not coding yet.
+Do not touch the repo yet.
+Do not propose implementation yet.
+This is one more audit-compression pass only.
+
+You already produced a good Phase 0 repo-context audit.
+Now refine it with these corrections and constraints.
+
+CURRENT REPO TRUTH
+- Current repo version: 0.6.5k
+- Current target lane: 0.6.6
+- Workflow is now DIRECT REPO TOUCH with Claude CLI
+- We do NOT work through .ps1 patches anymore
+- Keep version discipline, but do not narrate this lane as a patch-file workflow
+- Do not use patch-attempt language as if .ps1 were still the active execution model
+
+YOUR JOB NOW
+Rewrite your previous PLAN_MIN into a tighter, more operational audit close that is fully aligned with the current workflow.
+
+REQUIRED CORRECTIONS
+
+1. DIRECT-REPO ALIGNMENT
+Replace any wording that assumes:
+- .ps1 patch workflow
+- patch file delivery
+- patch-attempt execution model
+
+Keep:
+- current version / target version discipline
+- drift control
+- audit-first behavior
+- narrow-scope implementation planning
+- visible version truth
+
+But rewrite the language for:
+- direct repo touch
+- direct file edits in repo
+- commit-scoped discipline
+- do not claim v0.6.6 achieved until the repo pass is complete and reviewed
+
+2. CLASSIFY FINDINGS PROPERLY
+Reclassify every meaningful finding using exactly these classes:
+- blocker
+- debt
+- later
+- interesting
+- not now
+
+Do not leave findings as a flat list.
+Do not let small cleanup items visually compete with true product-alignment issues.
+
+3. ICON DENSITY FAMILY — DO NOT OVERSTATE
+You flagged a possible Icon density-family gap.
+Treat this carefully.
+
+Rule:
+- do NOT treat it as a blocker by default
+- do NOT assume Icon must expose the same visible density controls as Effects/Bitmap
+- first compare canon product truth vs live repo behavior
+- classify only after that comparison
+- if still unresolved, classify as interesting or debt, not blocker, unless canon explicitly requires it
+
+4. DO NOT EXPAND SCOPE
+Still keep:
+- Icon first
+- Effects second
+- Bitmap third
+
+Do not reopen:
+- engine extraction
+- broad architecture rewrite
+- speculative redesign
+- new features outside product lock
+
+5. PRODUCE A PHASE 1 ICON BRIEF ONLY
+After correcting the audit, produce a narrowed Phase 1 brief for Icon only.
+
+That brief must state:
+- exact Icon scope for v0.6.6
+- exact files likely touched
+- exact behaviors to verify
+- exact gaps to classify
+- what explicitly does NOT enter v0.6.6
+- what must be reviewed before any code touch
+
+6. VERSION LANE CLARITY
+Add a small version-lane block:
+- what belongs in v0.6.6
+- what explicitly does not belong in v0.6.6
+- what should wait for later versions
+
+OUTPUT FORMAT
+Return only a revised PLAN_MIN with this exact structure:
+
+A. Audit corrections applied
+B. Classified findings
+C. v0.6.6 exact scope
+D. Exact file list likely touched for Phase 1
+E. Exact order of the Phase 1 Icon audit/brief pass
+F. Risks
+G. Out-of-scope items
+H. Validation checklist for Icon only
+I. Version lane clarity
+J. One next move only
+
+MANDATORY STYLE
+- Be compact
+- Be decisive
+- No code
+- No implementation
+- No repo edits
+- No speculative redesign
+- Keep the result tightly scoped to the next correct move
+
+FINAL RULE
+This response must close Phase 0 properly and leave only one next move:
+produce the narrowest possible reviewed Phase 1 Icon implementation brief before any repo touch.

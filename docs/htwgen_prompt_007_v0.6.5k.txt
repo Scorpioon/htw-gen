@@ -1,0 +1,144 @@
+CONTRACT ACTIVE.
+
+MODE: AUDIT MODE
+OUTPUT: PLAN_MIN
+
+Current repo truth:
+- Current version: v0.6.5k
+- Current working lane: Effects delivery / UI stabilization
+- Workflow: direct repo touch with Claude CLI
+- Important constraint: do not redesign code architecture around visual cleanup
+
+Read this carefully:
+the system is broadly working.
+The problem is not that Effects logic needs to be reinvented.
+The problem is that the UI/UX semantic read is messy and weak.
+I want you to reorganize and clarify the existing sidebar and ownership cues without rewriting the underlying system around the visual changes.
+
+CORE INTENT
+This is a TOOL FEEL / UI SEMANTIC pass.
+It is not a logic redesign pass.
+It is not an engine rewrite pass.
+It is not an architecture cleanup pass.
+It is not an invitation to "improve" the product by reinterpreting it.
+
+What I want:
+- better hierarchy
+- better grouping
+- better readability
+- clearer ownership of each control family
+- better local scrolling behavior
+- less visual floating noise
+- no broad code restructuring caused by visual changes
+
+What I do NOT want:
+- no engine extraction
+- no app-wide refactor
+- no new framework
+- no rethinking Effects semantics
+- no rebuild of state model
+- no redesign around the code
+- no moving logic around just because a panel is being reorganized
+
+IMPORTANT PRODUCT/UX FEEDBACK TO INTERNALIZE
+
+1. The sidebar currently feels messy and semantically disordered.
+There are too many floating separators, uneven block sizes, and weak ownership cues.
+
+2. I need clearer semantic grouping in Effects.
+The user must quickly understand what belongs to:
+- source/input
+- authoring
+- generation
+- output
+
+3. Layers must NOT keep consuming the full sidebar scroll.
+Layers need their own local box with local vertical scroll.
+The sidebar itself should remain stable.
+This is important.
+
+4. Apply / Undo last / Delete all must be treated as one horizontal action row:
+[Apply] [Undo last] [Delete all]
+Same size family.
+Same action band.
+Not stacked like a form.
+
+5. Overall Undo / Redo do not currently feel reliable / useful.
+Do not redesign global history now, but do account for their weak UX read when reorganizing the layout.
+
+6. Dark mode contrast is currently too weak in some places.
+Muted grey + small text makes things feel disabled or unreadable.
+This is a real usability problem.
+Prioritize readability over subtle muted styling.
+
+7. The current delete "X" in Layers does not fit the UI language.
+Do not introduce random iconography.
+If needed, normalize this using the existing system language rather than decorative symbols.
+
+8. There is a weird jump/reset feeling when applying a layer.
+This is not fully closed yet.
+EFX-3 is NOT closed.
+Do not treat the earlier mask-clear warning idea as resolved final truth.
+You must explicitly audit what is happening around:
+- Apply Layer
+- layer insertion
+- panel rerender
+- viewport / panel jump
+- sidebar stability
+before proposing implementation.
+
+9. I am overall happy with the product direction.
+This is a polish / stabilization pass.
+Do not convert this into a redesign.
+
+YOUR JOB NOW
+Do not code yet.
+First produce a compact PLAN_MIN for a UI stabilization pass for Effects only.
+
+You must:
+1. absorb the feedback above
+2. re-audit Effects sidebar/layout semantics
+3. explicitly revisit EFX-3 and decide whether it is:
+   - blocker
+   - debt
+   - later
+   - interesting
+   - not now
+4. propose the narrowest implementation pass that improves tool feel without destabilizing logic
+
+Focus on:
+- visual grouping
+- sidebar ownership clarity
+- local scroll behavior for Layers
+- action row composition
+- spacing / separators / block rhythm
+- contrast/readability
+- whether Apply causes a rerender jump and how to contain it safely
+
+Do not implement yet.
+
+RETURN ONLY PLAN_MIN with this structure:
+
+A. Exact scope
+B. Feedback absorbed
+C. Re-audit of EFX-3
+D. UI/UX semantic findings
+E. Classified findings
+F. Safe implementation scope
+G. Exact file list likely touched
+H. Risks
+I. Explicit out-of-scope items
+J. One next move only
+
+STYLE
+- Compact
+- Clear
+- No code
+- No implementation
+- No architecture wishlist
+- No speculative redesign
+
+FINAL RULE
+Preserve the working Effects system.
+Improve the UI read and tool feel around it.
+Do not rewrite the product around the visual pass.
