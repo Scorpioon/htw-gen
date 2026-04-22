@@ -295,7 +295,7 @@ canvas {
 
 .sbl {
   font: 8px/1 monospace;
-  color: var(--dim);
+  color: var(--text);
   letter-spacing: .08em;
   padding: 7px 0 5px;
   text-transform: uppercase;
@@ -425,7 +425,7 @@ canvas {
 
 .togk {
   font: 8px/1 monospace;
-  color: var(--mut);
+  color: var(--dim);
   margin-right: 6px
 }
 
@@ -465,7 +465,7 @@ canvas {
 
 .slrow label {
   font: 8px/1 monospace;
-  color: var(--mut)
+  color: var(--dim)
 }
 
 .slval {
