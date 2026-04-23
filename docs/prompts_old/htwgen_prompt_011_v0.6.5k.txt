@@ -1,0 +1,166 @@
+CONTRACT ACTIVE.
+
+MODE: AUDIT MODE
+OUTPUT: PLAN_MIN
+
+Current repo truth:
+- Current version: v0.6.5k
+- Active lane: Effects final polish
+- Workflow: direct repo touch with Claude CLI
+- Base has been reset cleanly to v0.6.5k
+- This pass must preserve the working Effects system
+
+PURPOSE
+We are defining the final bounded polish pass for Effects on top of the stable v0.6.5k base.
+
+This is NOT:
+- a redesign
+- an architecture refactor
+- an engine extraction pass
+- a product reinterpretation pass
+- a broad audit reopening
+- an invitation to rewrite logic because of visual cleanup
+
+This IS:
+- a final polish / stabilization pass
+- a tool-feel pass
+- a sidebar semantic clarity pass
+- a border/remainder/export finish pass
+
+READ THIS AS SOURCE OF TRUTH
+
+WHAT I WANT
+
+LANE A — EFFECTS SIDEBAR / TOOL FEEL POLISH
+
+I want a pass of reordering, contrast, grouping, and ownership clarity.
+I do NOT want a redesign.
+
+The sidebar currently feels semantically disordered:
+- floating separators
+- inconsistent block sizes
+- weak ownership cues
+- weak contrast in dark mode
+- some labels feel muted/disabled when they should feel readable
+- overall tool feel could be much clearer
+
+What I want inside Lane A:
+- reorder blocks for better semantic reading
+- improve spacing / separators / block rhythm
+- improve contrast and readability in dark mode
+- make Apply Layer / Undo last step / Delete all layers into 3 horizontal columns
+- keep Layers in their own local scroll box
+- Layers must NOT consume the full sidebar scroll
+- sidebar should remain stable
+- delete control for layers should feel coherent with the current UI language, not like a random decorative icon
+- keep the system readable for users who may struggle with low-contrast muted grey text
+
+EFX-3 IS NOT CLOSED.
+It must be explicitly revisited.
+Do not assume the earlier interpretation was final.
+You must re-check what is happening around:
+- Apply Layer
+- layer insertion
+- rerender behavior
+- sidebar stability
+- jump/reset feeling after apply
+
+LANE B — EFFECTS BORDER / REMAINDER / EXPORT FINISH
+
+This is the real geometry/export polish problem:
+
+The engine operates on a fixed grid.
+Client deliverables may require exact output sizes such as 1920x1080.
+Sometimes the image dimensions do not divide cleanly by the active grid / cell size.
+That creates a residual strip / incomplete border feel.
+
+The current problem is NOT “just crop the image.”
+The final output size must remain exact.
+
+The problem is:
+- the working grid seems effectively top-left anchored
+- when dimensions do not fit the grid cleanly, a thin residual edge band appears
+- the border feels incomplete
+- export/view can leave unwanted empty or black leftover edge area
+
+What I want inside Lane B:
+- the border should feel centered, not born from the top-left corner
+- the working rect should behave as a centered snapped rect inside the final export space
+- the final export size must remain exact
+- the border should absorb / solve the remainder cleanly
+- no useless black residual strip
+- no ugly destructive crop
+- minimal change to engine semantics
+
+In practical terms:
+- do not resize the final image
+- do not rewrite the engine
+- do not redesign Effects
+- propose the narrowest possible placement/bounds/export adjustment
+
+WHAT I DO NOT WANT
+
+Do not:
+- redesign Effects semantics
+- refactor architecture
+- extract engines
+- rework state model
+- touch Icon
+- touch Bitmap
+- add new features
+- treat this as a broad product pass
+- move logic around just because sections are reordered
+- rewrite working code around visual cleanup
+
+WHAT MUST STAY WORKING
+
+Do not break:
+- Effects render behavior
+- bake logic
+- noise logic
+- export composite logic
+- checker painting
+- palette behavior
+- keyboard flow
+- the current working Effects baseline
+
+YOUR JOB NOW
+
+Do not implement yet.
+
+Produce one final PLAN_MIN that:
+1. absorbs all the above feedback as the governing handshake
+2. clearly separates Lane A and Lane B
+3. identifies the exact findings that should be acted on
+4. proposes the smallest safe implementation pass
+5. preserves the current working system
+6. keeps scope tight and delivery-oriented
+
+RETURN ONLY THIS STRUCTURE
+
+A. Exact final scope
+B. What belongs to Lane A
+C. What belongs to Lane B
+D. Exact findings to act on
+E. Exact file list likely touched
+F. Exact order of implementation
+G. Risks
+H. Explicit out-of-scope items
+I. Validation checklist
+J. One next move only
+
+STYLE
+- compact
+- decisive
+- no code
+- no implementation yet
+- no essay
+- no redesign language
+- no architecture wishlist
+
+FINAL RULE
+This is the last bounded final polish plan for Effects on top of the stable v0.6.5k base.
+Preserve the working system.
+Only improve:
+- the UI/tool feel and semantic readability
+- the border/remainder/export finish

@@ -1,0 +1,59 @@
+CONTRACT ACTIVE.
+
+MODE: PATCH MODE
+OUTPUT: IMPLEMENT_MIN
+
+We have a regression after the UI stabilization pass.
+
+Problem:
+LAYERS section is no longer rendering in Effects sidebar.
+
+Symptoms:
+- No layer rows visible
+- Actions show but state is inconsistent
+- Likely sbEffects() template broken
+
+Scope:
+Fix LAYERS rendering ONLY.
+Do not redesign anything.
+Do not touch logic outside sbEffects().
+
+Tasks:
+
+1. Inspect sbEffects() return string
+- Ensure layersHtml is still generated
+- Ensure it is injected inside the LAYERS section
+
+Expected structure:
+sec('LAYERS',
+  '<div class="layer-scroll">' +
+    layersHtml +
+  '</div>'
+)
+
+2. Verify layersHtml source
+- Must use existing S.fx.layers
+- Must not introduce new state paths
+
+3. Fix any broken HTML
+- All divs must be properly closed
+- No malformed template strings
+
+4. Do NOT touch:
+- renderEffects()
+- bake()
+- export
+- wireUI()
+- state.js
+
+5. If wrapper is the issue:
+- temporarily remove layer-scroll wrapper
+- restore original working LAYERS rendering first
+
+Output:
+- exact diff
+- minimal changes only
+
+Goal:
+Restore LAYERS rendering exactly as before (functional),
+then we will reapply UI improvements safely.

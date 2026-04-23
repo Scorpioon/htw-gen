@@ -1,0 +1,96 @@
+CONTRACT ACTIVE.
+
+MODE: AUDIT MODE
+OUTPUT: PLAN_MIN
+
+Current repo truth:
+- Current version: v0.6.5k
+- Current target lane: delivery-focused Effects audit
+- Workflow: direct repo touch with Claude CLI
+- Repo is clean again after reverting the failed Icon detour
+- This pass is NOT about Icon
+- This pass is NOT about architecture cleanup
+- This pass is NOT about engine extraction
+- This pass is NOT about product redesign
+
+PURPOSE
+We need the narrowest possible delivery audit for Effects so the tool can be integrated into the web and shown to clients this Friday.
+
+This is not a broad product audit.
+This is not a historical recap.
+This is not a perfection pass.
+
+This is a shipping-focused audit:
+identify only the things in Effects that would realistically damage a client-facing demo, asset-production session, or web integration handoff.
+
+TRUTH SPINE
+Re-anchor your reasoning on the actual development path that led to v0.6.5k:
+- 0.6.5d = Effects geometry
+- 0.6.5e = Effects authoring clarity
+- 0.6.5f = size/depth separation
+- 0.6.5j = noise model + export + fit view
+- 0.6.5k = structure coherence
+
+Interpret v0.6.5k primarily through this Effects/noise/export/coherence lineage.
+Do not re-center this pass around Icon.
+
+YOUR JOB
+Audit Effects only, using:
+- current live repo behavior as read from code
+- the product/canon docs relevant to Effects
+- the historical truth spine above
+
+Focus only on:
+- demo safety
+- authoring clarity
+- export correctness
+- visible UX blockers
+- interaction reliability
+- things likely to confuse clients or break a real usage session
+
+DO NOT:
+- propose engine extraction
+- propose app-wide cleanup
+- reopen Icon
+- reopen Bitmap except if a Bitmap-side behavior directly breaks Effects workflow
+- propose speculative redesign
+- produce implementation yet
+
+CLASSIFICATION
+Classify every meaningful finding using exactly:
+- blocker
+- debt
+- later
+- interesting
+- not now
+
+Important:
+Only true delivery blockers should be blockers.
+Do not inflate low-level technical debt into demo blockers.
+
+REQUIRED OUTPUT
+Return only PLAN_MIN with this exact structure:
+
+A. Exact scope
+B. Effects truth surfaces used
+C. Delivery-critical findings only
+D. Classified findings
+E. What would most likely break or confuse a client demo
+F. Safe scope for the next implementation pass
+G. Exact file list likely touched in that pass
+H. Risks
+I. Explicit out-of-scope items
+J. One next move only
+
+STYLE
+- Compact
+- Decisive
+- No code
+- No implementation
+- No essay
+- No architecture wishlist
+- Think like a delivery triage pass for Friday
+
+FINAL RULE
+Leave only one next move:
+a narrow Effects implementation brief for the smallest set of changes that materially improves delivery safety and client usability in v0.6.5k-derived work.

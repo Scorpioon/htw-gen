@@ -1,0 +1,184 @@
+HTW Generator — Full Cleanup Mandate
+
+FILE: htwgen_prompt_022_v0.6.5x_audit.txt
+
+CONTRACT ACTIVE.
+MODE: AUDIT MODE
+OUTPUT: PLAN_MIN
+
+Base:
+- current working lane is Effects
+- current repo has proven fragile UI/handler coupling
+- user priority has changed:
+  this is no longer “minor polish”
+  this is now FULL CLEANUP / SANITATION PRIORITY
+
+Important translation of user intent:
+- do not treat the latest feedback as casual commentary
+- interpret it as a system-level directive:
+  the current base is considered too unstable to keep layering polish on top of
+- therefore, before more superficial polish, you must identify and sanitize the fragile systems that create repeated regressions
+
+This does NOT mean:
+- rewrite the whole app
+- freeform refactor
+- architecture redesign from taste
+- uncontrolled modularization
+
+This DOES mean:
+- identify fragile systems
+- define ownership
+- define invariants
+- define exact cleanup order
+- propose cleanup passes that reduce regression risk at the root
+
+---
+
+A. Primary objective
+
+Audit the codebase for SYSTEM-LEVEL fragility, starting from the `.tog` system and expanding to all adjacent systems that are required to make future changes safe.
+
+You must treat this as:
+- a sanitation program
+- not a feature pass
+- not a cosmetic pass
+- not a one-shot rewrite
+
+---
+
+B. Priority rule
+
+Start with `.tog` because recent failures exposed that it is not just a visual helper:
+- it influences label rendering
+- hint rendering
+- row semantics
+- perceived action semantics
+- interaction affordances
+
+Then audit every connected system that can cause a tiny UI change to break behavior.
+
+You must identify:
+1. `.tog` system
+2. related helper systems (`sec`, `sld`, etc.)
+3. sidebar template system
+4. delegated event routing system
+5. keyboard hint vs keyboard behavior system
+6. layer row system
+7. actions row system
+8. sidebar rebuild lifecycle
+9. any additional fragile system you discover that is directly relevant
+
+---
+
+C. Required framing
+
+Do NOT answer as if the user merely wants to “improve the look”.
+
+Answer as if the user is saying:
+
+> “We have detected that the current Effects base behaves like a fragile, partially frankenstein system.
+> Future work on top of this base is too risky unless we identify and clean the root fragile systems.
+> I want a real cleanup strategy, translated into exact LLM-operable tasks.”
+
+That is the correct reading of intent.
+
+---
+
+D. Required output
+
+Return PLAN_MIN with exactly these sections:
+
+1. SYSTEM INVENTORY
+For each fragile system:
+- system name
+- owner file(s)
+- owner function(s)
+- what it currently owns
+- why it is fragile
+- what kinds of edits currently break it
+
+2. SYSTEM DEPENDENCY MAP
+Show which systems depend on which others.
+Example style:
+- `.tog` -> sidebar template -> wireUI -> state mutation
+- keyboard hint -> keydown switch
+etc.
+
+3. CLEANUP PRIORITY RANKING
+Rank systems from:
+- highest cleanup priority
+to
+- lower cleanup priority
+
+Use reasons, not just labels.
+
+4. CLEANUP ROADMAP
+Create phased cleanup order.
+For each phase:
+- phase name
+- target systems
+- exact goal
+- expected files touched
+- isolation level
+- risk
+- why this phase must happen before the next one
+
+5. FIRST CLEANUP EXECUTION LANE
+Define the first real cleanup lane to execute after this audit.
+It must be narrow, safe, and actually useful.
+Do NOT make it vague.
+State:
+- exact system
+- exact pass goal
+- what is allowed
+- what is forbidden
+
+6. NON-NEGOTIABLE RULES FOR FUTURE CLAUDE PASSES
+Write the exact working rules Claude must follow on this repo after this audit.
+These rules should be operational, not motivational.
+
+---
+
+E. Constraints
+
+- No code yet
+- No implementation yet
+- No giant rewrite proposals
+- No generic “refactor app.js” recommendation
+- No redesign for aesthetics
+- No merging cleanup with product polish
+- No skipping directly to a full rewrite
+
+You may recommend extraction only if:
+- ownership is already clear
+- behavior can be preserved exactly
+- the extraction reduces a known regression hotspot
+
+---
+
+F. Special instruction
+
+You must explicitly decide whether `.tog` is:
+- just a visual helper
+- or a higher-order fragile system that currently carries too much semantic weight
+
+Do not dodge this.
+Make the call clearly.
+
+You must also explicitly identify whether the current layer-row problem is:
+- a text problem
+- a CSS problem
+- a semantics problem
+- or a combined system problem
+
+Make that call clearly too.
+
+---
+
+G. Final instruction
+
+This audit is meant to become the basis for future sanitation work.
+Be precise enough that the next step can be turned into an implementation prompt without reinterpretation.
+
+One next move only:
+after this audit, we will execute the FIRST CLEANUP EXECUTION LANE and nothing else.

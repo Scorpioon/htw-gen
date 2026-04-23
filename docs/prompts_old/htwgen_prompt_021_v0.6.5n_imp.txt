@@ -1,0 +1,134 @@
+HTW Generator — v0.6.5n (hotfix pass)
+IMPLEMENT_MIN — C shortcut + safe Del label (ASCII, no structural change)
+
+CONTRACT ACTIVE.
+MODE: PATCH MODE
+OUTPUT: IMPLEMENT_MIN
+
+Base: v0.6.5m
+Scope: TWO isolated micro-fixes in app.js only
+No layout changes. No helper changes. No sidebar restructure.
+
+---
+
+A. Exact File List
+
+- app.js only
+
+---
+
+B. Root cause
+
+1) C shortcut:
+- tog(..., 'C') only renders a visual hint
+- keydown handler has no case 'c' / 'C'
+→ click works, keyboard does nothing
+
+2) Del mojibake:
+- source contains corrupted UTF-8 sequence
+- previous attempts mixed text + structure or introduced bad quotes
+→ either mojibake or broken handler
+
+---
+
+C. Invariants (must be preserved)
+
+- data-layer-delete attribute EXACTLY unchanged
+- element type remains <span>
+- class remains "togk"
+- inline style remains unchanged
+- wireUI() untouched
+- handleToggle() untouched
+- no smart quotes anywhere
+- ASCII only for label
+
+---
+
+D. Exact Code Changes
+
+1) C shortcut — add ONLY this case in keydown switch:
+
+case 'c': case 'C':
+  if (S.mode === 'effects') {
+    S.fx.colorMode = !S.fx.colorMode;
+    dProc();
+  }
+  break;
+
+Placement:
+- next to existing 'k' case
+- do not modify other cases
+
+---
+
+2) Del label — TEXT NODE ONLY change
+
+Find EXACT line containing mojibake:
+
+<span class="togk" data-layer-delete="${i}" style="cursor:pointer; margin-right:6px">...</span>
+
+Replace ONLY the inner text:
+
+BEFORE:
+>Ã¢Å"â€¢</span>
+
+AFTER:
+>DEL</span>
+
+IMPORTANT:
+- DO NOT change quotes
+- DO NOT change attributes
+- DO NOT change element
+- DO NOT retype entire line unless necessary
+- ONLY replace inner text
+
+---
+
+E. Expected visible change
+
+- Press C → toggles base image color in Effects mode
+- Layer rows show "DEL" clearly
+- Clicking DEL deletes correct layer
+- No change to layout, spacing, or behavior
+
+---
+
+F. Validation checklist
+
+- Click Color toggle → still works
+- Press C → toggles color (Effects only)
+- Press C in other modes → does nothing
+- Bake 2+ layers → rows show DEL
+- Click DEL → correct layer removed
+- Visibility toggle still works
+- No console errors
+- No layout shifts
+
+---
+
+G. What NOT to do
+
+- Do NOT replace span with button
+- Do NOT change class names
+- Do NOT introduce Unicode symbols
+- Do NOT touch sbEffects structure
+- Do NOT touch CSS
+- Do NOT combine with other fixes
+
+---
+
+H. Commit message
+
+v0.6.5n hotfix: C shortcut + safe DEL label (text-only)
+
+- add missing 'C' keydown handler for base image color toggle
+- replace mojibake delete label with ASCII-safe "DEL"
+- no structural or handler changes
+
+---
+
+I. One next move only
+
+Apply changes → validate checklist → commit
+
+STOP after this. Do NOT chain into next roadmap step.

@@ -1,0 +1,85 @@
+CONTRACT ACTIVE.
+MODE: AUDIT MODE
+OUTPUT: PLAN_MIN
+BASE: v0.6.5m
+
+GOAL:
+Lock the behavior of the sidebar systems before any further implementation.
+
+READ ONLY:
+- app.js (sbEffects, wireUI, keydown switch, renderSidebar)
+
+DO NOT IMPLEMENT.
+DO NOT MODIFY FILES.
+DO NOT USE GIT.
+
+---
+
+TASKS:
+
+1. KEYBOARD SYSTEM LOCK
+
+List all current keyboard shortcuts:
+- key
+- condition (mode)
+- exact state mutation
+- function called (dProc, renderEffects, etc.)
+
+Then list all tog(..., 'X') hints.
+
+Return:
+- mismatches (hint without handler OR handler without hint)
+- exact invariant definition:
+  "A shortcut is valid only if both hint and handler exist"
+
+---
+
+2. TOG SYSTEM CONTRACT
+
+Define EXACT contract of tog():
+- what HTML it outputs
+- what data attributes are required
+- what wireUI depends on
+
+Return:
+- list of invariants that must never change
+
+---
+
+3. LAYER ROW SYSTEM (NO EXTRACTION)
+
+Read inline template only.
+
+Return:
+- what parts are:
+  - visual only
+  - handler-critical
+  - encoding-sensitive
+
+Mark:
+- which parts are SAFE for LLM edits
+- which parts are MANUAL ONLY
+
+---
+
+4. WIREUI CONTRACT
+
+Map:
+- every data-* attribute → exact handler
+
+Return:
+- routing table
+
+---
+
+5. OUTPUT
+
+Return ONLY:
+
+A. System invariants (bulletproof rules)
+B. Unsafe surfaces (manual-only)
+C. Safe surfaces (LLM-allowed)
+D. Next safe implementation step (ONE step only)
+
+NO CODE.
+NO IMPLEMENTATION.

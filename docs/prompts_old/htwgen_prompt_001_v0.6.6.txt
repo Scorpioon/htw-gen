@@ -1,0 +1,240 @@
+CONTRACT ACTIVE.
+
+MODE: AUDIT MODE
+OUTPUT: PLAN_MIN
+
+Project:
+- HTW Generator
+
+Current version:
+- 0.6.5k
+
+Target version:
+- 0.6.6
+
+Repo root:
+- K:\DEVKIT\projects\htw-generator\htw-generator
+
+Canonical product docs:
+- K:\DEVKIT\projects\htw-generator\htw-generator\docs\canon
+
+Canonical work / protocol docs:
+- K:\DEVKIT\projects\htw-generator\htw-generator\docs\wrkproto
+
+Critical workflow correction:
+- Do NOT assume .ps1 patch workflow for this lane.
+- This project is now operated through direct repo touch inside Claude CLI.
+- You may read, inspect, propose, and later edit the real repo directly, but NOT in this pass.
+- This pass is audit + roadmap only.
+- No implementation yet.
+
+Core doctrine:
+- User is source of truth.
+- Product docs outrank stale chat narrative.
+- Real repo truth outranks old planning narrative once inspected.
+- No autonomous redesign.
+- Preserve modularity.
+- Detect and name drift explicitly.
+- Feedback must be classified before action: blocker / debt / later / interesting / not now.
+- Roadmap integrity outranks reactive local fixing.
+- One next move only.
+
+Your job in this pass:
+You must audit BOTH:
+1. the current HTW Generator product documentation
+2. the current HTW Generator app / repo state at version 0.6.5k
+
+Then you must compare them and produce a drift-aware roadmap to align the product and the repo toward v0.6.6 and beyond.
+
+Important:
+Do not act like a generic coding assistant.
+Do not jump into implementation.
+Do not rewrite architecture because it “could be cleaner”.
+Do not flatten docs into summary sludge.
+Do not invent missing product direction.
+Do not silently broaden scope.
+
+You must first internalize the project truth, then audit the real repo, then compare both surfaces.
+
+Documents to prioritize inside docs\canon:
+- HTW_000_HTWGenerator_PROTOCOL.work_contract_v1.0.md
+- HTW_000_HTWGenerator_CONTEXT.pob_v1.0.md
+- HTW_000_HTWGenerator_ROADMAP.main_v1.0.md
+- HTW_000_HTWGenerator_LOG.tech_v1.0.md
+- HTW_000_HTWGenerator_AUDIT.master_v1.0.md
+- HTW_000_HTWGenerator_SPEC.product_lock_v1.0.md
+- HTW_000_HTWGenerator_DOC.audit_brief_for_claude_v1.0.md
+- HTW_000_HTWGenerator_LOG.dev_v1.0.md
+
+If present and useful, also read:
+- HTW_000_HTWGenerator_WWL.local_v1.0.md
+
+Documents to prioritize inside docs\wrkproto:
+- latest WRKOPS / local contract docs
+- latest audit / continuity / handoff / version-trace / patch-traceability docs that materially constrain this lane
+
+Interpretation rule:
+- For this pass, wrkproto docs define HOW to operate.
+- canon docs define WHAT this project is, where it is now, and what must be aligned.
+- real repo inspection defines WHAT is actually implemented right now.
+
+Audit target:
+Determine whether the current app at 0.6.5k is truly aligned with the closed product direction, especially across:
+- overall product identity
+- modular architecture
+- Icon engine
+- Effects engine
+- Bitmap engine
+- export behavior
+- layering / masking / selection semantics
+- UI / UX structure
+- state ownership
+- naming consistency
+- drift between docs and real code
+
+Known historical product direction you must respect:
+- The product is web-first.
+- It is a creative-suite-like HTW identity tool, not a toy filter playground.
+- It has three core engines: ICON / EFFECTS / BITMAP.
+- Priority order is ICON first, EFFECTS second, BITMAP third.
+- Icon is the most urgent production-critical engine.
+- Product direction is already largely decided; this pass is not for re-inventing it.
+- Preserve the HTW visual identity and software-like vibe.
+- Avoid fake simplifications that would weaken the tool.
+
+Historical baseline nuance:
+- Older audits treated 0.6.0a modular as the strongest stable historical reference.
+- Current repo truth is 0.6.5k.
+- Do NOT propose rolling back merely because an older baseline felt cleaner.
+- Use 0.6.0a only as historical context where it clarifies drift or regression.
+- The actual audit target is the CURRENT repo at 0.6.5k.
+
+Required audit behavior:
+1. Read and internalize the product/canon docs first.
+2. Read and internalize the local protocol/workflow docs second.
+3. Inspect the real repo structure and current implementation third.
+4. Compare docs vs repo explicitly.
+5. Classify findings before proposing action.
+6. Produce a roadmap that preserves lane discipline.
+7. Leave implementation for a later pass.
+
+You must explicitly detect and report:
+- product drift
+- architecture drift
+- semantic drift
+- UI/UX drift
+- source-of-truth drift
+- naming drift
+- roadmap drift
+- baseline confusion
+- doc/repo contradiction
+- unclear ownership zones
+- “looks implemented but meaning is unstable” zones
+
+You must separate findings by severity/class:
+- blocker
+- debt
+- later
+- interesting
+- not now
+
+Blocker rule:
+- only real blockers should interrupt the active lane
+- not every flaw is a blocker
+
+What to inspect in the repo:
+- actual file/folder structure
+- engine/module ownership
+- current HTML/CSS/JS boundaries
+- current state/store boundaries
+- current export paths
+- current layer model
+- masking/selection logic
+- engine-specific logic placement
+- naming quality and consistency
+- oversized files or ownership collisions
+- any areas where current repo truth contradicts product_lock or tech_log
+
+What NOT to do:
+- do not code
+- do not silently edit files
+- do not return patches
+- do not dump a giant summary of every file
+- do not propose a total rewrite unless the evidence makes it unavoidable
+- do not erase working parts because they are imperfect
+- do not overfit to old patterns from other projects
+
+Return only PLAN_MIN in this exact structure:
+
+A. Exact scope
+- What this audit covered
+- Which truth surfaces were used
+- What was intentionally not covered
+
+B. Exact file list likely touched later
+- Only the files or areas that are likely to matter in future implementation
+- Keep this list bounded and readable
+
+C. Exact order of edits
+- Proposed future alignment order
+- Must respect ICON > EFFECTS > BITMAP priority
+- Must respect audit-first workflow
+
+D. Cleanup vs structural changes
+- Distinguish clearly between:
+  - cleanup
+  - modular refactor
+  - semantic correction
+  - UX/UI alignment
+  - engine behavior correction
+
+E. Risks
+- Real risks only
+- Include drift, regressions, ambiguity, and oversized-scope risks
+
+F. Out-of-scope items
+- Name what should NOT enter the next implementation lane yet
+
+G. Validation checklist
+- What must be checked after future implementation
+- Keep it concrete and operator-useful
+
+H. Expected visible changes
+- What the user should expect to improve on-screen once the roadmap is executed
+
+I. Key features to check
+- The most important product behaviors that must be verified during alignment
+
+J. What to do next
+- One next move only
+
+Mandatory close behavior:
+End with:
+- state
+- delta
+- next move
+- dangers
+
+Critical quality bar:
+Your output must feel like a serious product/repo audit for a live tool near production pressure.
+It must not feel like:
+- a generic code review
+- a brainstorming session
+- a rewrite fantasy
+- a superficial summary
+
+If the docs and repo disagree:
+- name the contradiction
+- state which layer currently outranks
+- state what is unsafe to assume
+
+If baseline certainty becomes weak:
+- say so explicitly
+- do not fake confidence
+
+If you find product truths that are still underspecified:
+- mark them precisely
+- do not invent them away
+
+Final instruction:
+Protect direction first, then propose the narrowest roadmap that aligns the real app to the intended product.

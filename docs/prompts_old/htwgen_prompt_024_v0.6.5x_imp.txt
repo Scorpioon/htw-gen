@@ -1,0 +1,124 @@
+IMPLEMENT_MIN — v0.6.5x (Layer Row Extraction)
+
+CONTRACT ACTIVE.
+Base: v0.6.5n
+Mode: IMPLEMENT_MIN (single-surface, extraction only)
+
+---
+
+A. File list
+app.js only
+
+---
+
+B. Goal
+
+Extract the inline layer row template from sbEffects() into a dedicated helper:
+
+renderLayerRow(i, layer)
+
+WITHOUT changing:
+- any attribute
+- any text node
+- any structure
+- any handler behavior
+
+Output must be byte-equivalent.
+
+---
+
+C. Exact implementation steps
+
+1. Create helper ABOVE sbEffects()
+
+Add this function verbatim:
+
+function renderLayerRow(i, layer) {
+  return `<div class="tog" style="padding-left:4px" data-layer="${i}" data-layer-visible="${i}">
+    <span class="togl">Layer ${i + 1}</span>
+    <span class="togk" data-layer-delete="${i}" style="cursor:pointer; margin-right:6px">DEL</span>
+    <div class="togp${layer.visible ? ' on' : ''}" data-layer-visible="${i}">${layer.visible ? 'ON' : 'OFF'}</div>
+  </div>`;
+}
+
+CRITICAL:
+- Copy EXACTLY
+- ASCII only
+- Do NOT retype manually if avoidable
+- Do NOT change spacing inside attributes
+- Do NOT touch class names or data-* attributes
+
+---
+
+2. Replace inline template in sbEffects()
+
+BEFORE:
+
+for (let i = 0; i < S.bakeStack.length; i++) {
+  const layer = S.bakeStack[i];
+  layersHtml += `...inline template...`;
+}
+
+AFTER:
+
+let rows = '';
+
+for (let i = 0; i < S.bakeStack.length; i++) {
+  const layer = S.bakeStack[i];
+  rows += renderLayerRow(i, layer);
+}
+
+layersHtml = '<div class="sbs"><span class="sbl">LAYERS</span>' 
+  + rows 
+  + '</div><div class="sbs"><div class="sbdiv"></div></div>';
+
+---
+
+D. What MUST remain unchanged
+
+- hasLayers condition
+- wrapper:
+  <div class="sbs"><span class="sbl">LAYERS</span>
+- closing divider block
+- loop bounds
+- data-layer
+- data-layer-visible (both)
+- data-layer-delete
+- DEL text (ASCII)
+- ON / OFF logic
+- inline styles
+
+---
+
+E. Expected result
+
+- UI identical
+- Layer rows identical
+- Delete works
+- Toggle works
+- No visual diff
+- No behavior diff
+
+---
+
+F. Validation checklist
+
+- Bake 2+ layers
+- Verify:
+  - "Layer 1", "Layer 2" labels correct
+  - DEL visible (not mojibake)
+  - DEL deletes correct layer
+  - ON/OFF toggle works
+  - No layout shift
+- Export still works
+- No console errors
+
+---
+
+G. Commit message
+
+v0.6.5x extract layer row helper
+
+- extracted inline layer row template to renderLayerRow(i, layer)
+- no behavioral or visual changes
+- prepares safe surface for future layer edits

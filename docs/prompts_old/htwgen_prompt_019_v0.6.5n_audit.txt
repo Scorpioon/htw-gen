@@ -1,0 +1,77 @@
+HTW Generator — Read/Model Prompt
+
+FILE: htwgen_prompt_019_v0.6.5n_audit.txt
+
+CONTRACT ACTIVE.
+MODE: AUDIT MODE
+OUTPUT: PLAN_MIN
+
+Current repo truth:
+- Stable base: v0.6.5m
+- Active product lane: Effects
+- This prompt is READ + MODEL only
+- No implementation is allowed
+
+You must use:
+- HTWGEN_LLM_WORKING_MODEL_v0.6.5k.md
+
+Goal:
+Reconstruct the exact local working model for two tiny but real pending issues before any patch is proposed.
+
+Issues to model:
+1. `C` shortcut does not work for BASE IMAGE color toggle, even though the toggle itself works
+2. `Del` in layer rows still renders mojibake / corrupted text
+
+This is not an implementation prompt.
+
+---
+
+A. Task
+
+Read:
+1. HTWGEN_LLM_WORKING_MODEL_v0.6.5k.md
+2. the exact file/function regions that control:
+   - the BASE IMAGE color toggle in Effects
+   - the keyboard shortcut path for `C`
+   - the layer row template / delete control text rendering
+
+Then return only a local operational model of those surfaces.
+
+---
+
+B. Required Output
+
+Return only PLAN_MIN with this structure:
+
+A. exact files/functions read
+B. current behavior model for `C`
+C. current behavior model for `Del`
+D. critical invariants
+E. existing handler / id / data-attr / key path chain
+F. smallest allowed delta for each issue
+G. risks if changed carelessly
+H. what must not be touched
+I. recommended next micro-version order
+J. one next move only
+
+---
+
+C. Rules
+
+- No code
+- No implementation
+- No redesign
+- No broad audit
+- No sidebar reorder
+- No actions row
+- No geometry
+- If the issue is not owned by the same surface, separate them clearly
+- If one fix should happen before the other, say so explicitly
+
+---
+
+D. Final rule
+
+Do not propose a patch until you can explain exactly:
+- why the `C` shortcut fails while the toggle still works
+- why `Del` still shows mojibake even after the contrast pass

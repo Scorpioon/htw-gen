@@ -1,0 +1,91 @@
+HTW Generator — Implementation Prompt
+
+FILE: htwgen_prompt_020_v0.6.5n_imp.txt
+
+CONTRACT ACTIVE.
+MODE: IMPLEMENT_MIN
+
+Base: v0.6.5m
+
+Scope: Del mojibake hotfix ONLY.
+Do NOT implement C shortcut in this pass.
+
+---
+
+A. File list
+- app.js only
+
+---
+
+B. Root cause
+
+The delete label in the layer row template contains a corrupted UTF-8 sequence:
+Ã¢Å"â€¢
+
+This is not a rendering bug — it is incorrect text stored in the source file.
+
+All behavior (data-layer-delete, click handler) is correct.
+Only the visible text node is wrong.
+
+---
+
+C. Exact change
+
+In sbEffects() layer row template:
+
+FIND:
+>Ã¢Å"â€¢</span>
+
+REPLACE WITH:
+>Del</span>
+
+---
+
+D. Constraints (STRICT)
+
+- Do NOT change:
+  - class="togk"
+  - data-layer-delete="${i}"
+  - style attribute
+  - surrounding <span> structure
+- Do NOT replace the span with a button
+- Do NOT introduce any non-ASCII character
+- Do NOT touch any other part of sbEffects()
+- Do NOT touch any other file
+
+This is a TEXT-ONLY replacement.
+
+---
+
+E. Expected result
+
+- Layer rows display "Del"
+- Clicking "Del" deletes the correct layer
+- No layout or behavior change
+
+---
+
+F. Validation checklist
+
+- Bake 1+ layers
+- Verify label shows "Del" (no mojibake)
+- Click Del → correct layer removed
+- Visibility toggle still works
+- No other UI changes
+
+---
+
+G. Output format
+
+Return:
+- exact file list
+- minimal diff
+- confirmation no other lines changed
+
+No extra refactors. No additional improvements.
+
+---
+
+H. One next move only
+
+Implement this change and stop.

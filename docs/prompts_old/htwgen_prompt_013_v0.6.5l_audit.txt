@@ -1,0 +1,58 @@
+CONTRACT ACTIVE.
+
+MODE: AUDIT MODE
+OUTPUT: PLAN_MIN
+
+Your corrected plan is close, but apply these final scope protections before implementation.
+
+1. ACTIONS ROW
+Do NOT rebuild the Actions buttons manually.
+Do NOT invent or restate button ids unless they exactly match the current working ids already used by the existing Effects sidebar.
+
+Rule:
+- preserve the existing working Apply / Undo / Clear button generation path
+- only wrap the existing working buttons in the horizontal .arow container
+- no new custom button markup if the current helper/path already works
+
+Reason:
+We already had a regression where Apply stopped working.
+Functionality must stay anchored to the currently working trigger path.
+
+2. LAYERS BLOCK
+Do NOT make LAYERS conditional on hasLayers.
+Keep the LAYERS section visible even when empty.
+Use the local scroll box only as the container for rows.
+
+Reason:
+ownership and panel stability should remain visible even in the empty state.
+
+3. SEMANTIC ORDER
+Prefer this order inside the middle generation area:
+- EDGE MODE
+- STRUCTURE SIZE
+- RAILS
+- SEED
+- NOISE
+
+Do not bury SEED inside a group if it weakens semantic readability.
+
+4. KEEP LANE B AS A SEPARATE HYPOTHESIS
+Do not strengthen the wording around Lane B beyond “safe proposed pass”.
+It is still a placement/export adjustment to validate after Lane A, not a closed truth.
+
+Now return only a revised PLAN_MIN with this exact structure:
+
+A. corrected final scope
+B. Lane A only scope
+C. Lane B only scope
+D. exact file list for Lane A
+E. exact file list for Lane B
+F. exact implementation order
+G. validation order
+H. risks
+I. out-of-scope
+J. one next move only
+
+FINAL RULE
+Lane A must preserve the currently working action trigger path.
+LAYERS must remain visible even when empty.

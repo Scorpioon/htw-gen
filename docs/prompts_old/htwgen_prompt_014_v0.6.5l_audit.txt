@@ -1,0 +1,111 @@
+HTW Generator — Roadmap Audit Prompt
+
+FILE: htwgen_prompt_014_v0.6.5l_audit.txt
+
+CONTRACT ACTIVE.
+MODE: AUDIT MODE
+OUTPUT: PLAN_MIN
+
+---
+
+A. Context
+
+You are given:
+
+1. A stable base version: v0.6.5k
+2. A roadmap document: HTWGEN_Effects_Final_Polish_Roadmap_v0.6.5k_to_v0.6.6.md
+
+This roadmap defines a sequence of micro-versions:
+0.6.5l → 0.6.5m → 0.6.5n → ... → 0.6.6
+
+Each version is intended to be:
+- isolated
+- minimal
+- non-destructive
+- independently testable
+
+No implementation is allowed in this step.
+
+---
+
+B. Objective
+
+Audit the roadmap as a SYSTEM, not as individual ideas.
+
+Your goal is to:
+1. Validate sequencing
+2. Detect hidden dependencies
+3. Detect scope leakage between versions
+4. Confirm which versions are truly isolated
+5. Identify any version that is too large or unsafe
+6. Propose minimal corrections WITHOUT changing philosophy
+
+---
+
+C. Constraints
+
+- Do NOT redesign the roadmap
+- Do NOT merge versions unless strictly necessary
+- Do NOT expand scope
+- Do NOT introduce new features
+- Respect the “one surface per version” principle
+- Respect current working system (v0.6.5k)
+
+---
+
+D. Required Output
+
+Return a PLAN_MIN structured as:
+
+1. GLOBAL AUDIT
+   - Is sequencing correct? (yes/no + why)
+   - Any ordering issues?
+   - Any hidden coupling?
+
+2. VERSION TABLE
+
+For EACH version:
+
+Version: 0.6.5l
+- Objective:
+- Surface:
+- Files touched:
+- Dependencies:
+- Isolation level: (HIGH / MED / LOW)
+- Risk: (LOW / MED / HIGH)
+- Verdict: (GO / CAUTION / REORDER / SPLIT)
+
+Repeat for all versions.
+
+3. CRITICAL FLAGS
+
+List only real risks such as:
+- versions that depend on previous incomplete work
+- UI changes that could break handlers
+- geometry changes that may affect export unexpectedly
+
+4. FINAL EXECUTION ORDER
+
+Return the FINAL ORDER to follow.
+
+If unchanged → confirm.
+If adjusted → provide corrected order only.
+
+---
+
+E. Output Discipline
+
+- Be compact
+- No implementation
+- No code
+- No rewriting roadmap
+- Only audit and validate
+
+---
+
+F. Next Move
+
+After this audit:
+We will execute version 0.6.5l ONLY.
+
+No further versions until validation.

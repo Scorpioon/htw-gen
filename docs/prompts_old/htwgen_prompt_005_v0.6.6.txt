@@ -1,0 +1,62 @@
+CONTRACT ACTIVE.
+
+MODE: PATCH MODE
+OUTPUT: IMPLEMENT_MIN
+
+Stop. A blocker was found in Commit 2 behavior.
+
+Do not proceed to Commit 3.
+Do not version bump.
+Do not broaden scope.
+
+BLOCKER
+Icon palette click behavior is broken.
+Manual clicking on Icon palette buttons does not behave correctly.
+The correct interaction model is the existing Effects palette behavior.
+
+CAUSE
+The current implementation introduced a new data-picon path in sbIcon()/wireUI().
+This created a separate interaction route instead of reusing the proven data-p2 route.
+As a result, Icon palette click behavior diverged from Effects behavior.
+
+CORRECTION GOAL
+Keep S.icon.palIdx isolation.
+But remove the separate data-picon UI route.
+Reuse the existing data-p2 interaction pattern and route by current mode.
+
+APPROVED CORRECTION
+1. In sbIcon(), change:
+   p2g(S.icon.palIdx, P2, 'data-picon')
+   back to:
+   p2g(S.icon.palIdx, P2, 'data-p2')
+
+2. Remove the dedicated wireUI() block:
+   if (t.dataset.picon !== undefined) { ... }
+
+3. Update the existing data-p2 handler so it routes by mode:
+   - bitmap -> S.bm.pi2
+   - icon -> S.icon.palIdx
+   - else -> S.fx.palIdx
+
+Do not touch anything else.
+
+RETURN ONLY IMPLEMENT_MIN with:
+A. exact file list
+B. exact edit summary
+C. exact code change
+D. expected visible change
+E. validation checklist
+F. what to do next
+G. current branch
+H. committed or not
+I. pushed or not
+J. commit message suggestion
+
+IMPORTANT
+- One file only: app.js
+- No state.js changes
+- No cleanup
+- No version bump
+- No Commit 3
+- Keep S.icon.palIdx as already introduced
+- This is only a correction to Commit 2 interaction behavior

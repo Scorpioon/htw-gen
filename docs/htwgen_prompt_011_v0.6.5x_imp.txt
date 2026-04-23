@@ -1,0 +1,176 @@
+HTW Generator — Layer Row Extraction (Strict v2)
+
+FILE: htwgen_prompt_025_v0.6.5x_imp.txt
+
+CONTRACT ACTIVE.
+MODE: PATCH MODE
+OUTPUT: IMPLEMENT_MIN
+
+Base:
+- current base must be the clean pre-extraction state
+- this pass is extraction only
+- no git actions allowed
+- working tree only
+
+---
+
+A. Scope
+
+Extract the current inline layer row template from `sbEffects()` into:
+
+`renderLayerRow(i, layer)`
+
+This is a transcription pass, not a rewrite pass.
+
+Allowed:
+- create one new helper function
+- replace the inline row template with a helper call
+- introduce a local `rows` accumulator
+
+Forbidden:
+- any other code change
+- any HTML normalization
+- any text rewrite
+- any CSS change
+- any handler change
+- any git command
+
+---
+
+B. Hard rules
+
+1. ASCII QUOTES ONLY
+Use only:
+- "
+- '
+Never use:
+- “ ”
+- ‘ ’
+
+2. COPY-EXACT RULE
+Do NOT manually rewrite the HTML template from memory.
+You MUST copy the exact current inline row template from the live file and paste it into the helper body unchanged.
+
+3. BYTE-EQUIVALENT OUTPUT
+The helper output must be structurally identical to the current inline output.
+
+4. NO GIT
+Do NOT run:
+- git add
+- git commit
+- git push
+- any git command
+
+5. FAIL-FAST RULE
+If you detect or produce any smart quotes / non-ASCII quotes in the diff, STOP and report failure instead of continuing.
+
+---
+
+C. Exact implementation steps
+
+1. Read the current live inline row template in `sbEffects()`.
+
+2. Create this helper immediately above `sbEffects()`:
+
+function renderLayerRow(i, layer) {
+  return `PASTE THE EXACT CURRENT INLINE ROW TEMPLATE HERE`;
+}
+
+Important:
+- the returned template must preserve exact current ASCII quotes
+- preserve all attributes exactly
+- preserve DEL text exactly as currently stored in the clean base
+- preserve inline styles exactly
+- preserve `data-layer`
+- preserve both `data-layer-visible`
+- preserve `data-layer-delete`
+
+3. Replace only the row-building loop body shape.
+
+Target caller shape:
+
+let rows = '';
+for (let i = 0; i < S.bakeStack.length; i++) {
+  const layer = S.bakeStack[i];
+  rows += renderLayerRow(i, layer);
+}
+
+Then assemble `layersHtml` exactly as before, with:
+- existing hasLayers guard unchanged
+- existing LAYERS wrapper unchanged
+- existing divider block unchanged
+
+---
+
+D. Exact things that must remain unchanged
+
+- `if (hasLayers)` guard
+- `layersHtml` variable usage
+- outer LAYERS wrapper
+- divider block
+- loop bounds
+- `const layer = S.bakeStack[i];`
+- all `data-*` attributes in the row
+- all class names
+- all inline style strings
+- text nodes:
+  - Layer ${i + 1}
+  - DEL
+  - ON / OFF
+
+---
+
+E. Required self-check before finishing
+
+Before reporting success, verify all of these:
+
+1. No smart quotes exist in the new helper
+2. No smart quotes exist in the new `layersHtml` wrapper line
+3. `class="tog"` still exists exactly
+4. `class="togl"` still exists exactly
+5. `class="togk"` still exists exactly
+6. `class="togp...` still exists exactly
+7. `data-layer-delete="${i}"` still exists exactly
+8. `data-layer-visible="${i}"` still exists exactly in both places
+9. No lines outside the extraction surface changed
+10. No git command was run
+
+If any check fails, report failure instead of pretending success.
+
+---
+
+F. Output format
+
+Return only:
+
+A. exact file list
+B. exact root cause / rationale
+C. exact edit summary
+D. exact code change
+E. self-check result
+F. validation checklist
+G. what to do next
+H. current branch
+I. committed or not
+J. pushed or not
+K. confirmation that no git commands were run
+
+---
+
+G. Validation checklist
+
+After patch:
+- UI must look identical to pre-extraction
+- LAYERS styling must remain correct
+- DEL styling must remain correct
+- clicking DEL deletes correct layer
+- ON/OFF toggle still works
+- no layout shift
+- no console errors
+
+---
+
+H. One next move only
+
+Apply the extraction and stop.
+If any quote corruption appears, stop and report failure.

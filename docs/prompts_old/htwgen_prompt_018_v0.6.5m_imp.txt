@@ -1,0 +1,97 @@
+HTW Generator — Contrast Implementation Prompt
+
+FILE: htwgen_prompt_018_v0.6.5m_imp.txt
+
+CONTRACT ACTIVE.
+MODE: PATCH MODE
+OUTPUT: IMPLEMENT_MIN
+
+Current repo truth:
+- Stable base: v0.6.5l (after confidence hotfix)
+- Target version for this pass: v0.6.5m
+- This pass is contrast only
+- styles.css only
+- No version bump
+- No app.js changes
+- No structural changes
+- No other roadmap items
+
+---
+
+A. Scope
+
+Implement ONLY the approved 0.6.5m contrast pass.
+
+Approved delta:
+1. .sbl: color: var(--dim) -> color: var(--text)
+2. .togk: color: var(--mut) -> color: var(--dim)
+3. .slrow label: color: var(--mut) -> color: var(--dim)
+
+Nothing else enters this pass.
+
+---
+
+B. Constraints
+
+Do NOT:
+- touch any property other than color in these three selectors
+- touch any other selector
+- touch app.js
+- touch any other file
+- add new CSS rules
+- bundle any spacing / layout / reorder work
+- bundle any delete-control work
+- bundle any other roadmap item
+
+Keep:
+- existing font sizes
+- existing spacing
+- existing letter-spacing
+- all existing selector names
+- all existing CSS custom property names
+
+---
+
+C. Approved implementation intent
+
+This is a pure readability pass:
+- section labels should read clearly as ownership markers
+- key hints and small secondary labels should be legible, not disabled-looking
+- no structural or behavioral change is allowed
+
+---
+
+D. Output format
+
+Return ONLY IMPLEMENT_MIN with this exact structure:
+
+A. exact file list
+B. exact root cause / rationale
+C. exact edit summary
+D. exact code change
+E. expected visible change
+F. validation checklist
+G. what to do next
+H. current branch
+I. committed or not
+J. pushed or not
+K. commit message suggestion
+
+---
+
+E. Validation target
+
+After implementation, the user must be able to verify:
+- section labels are easier to read in dark mode
+- key hints like [C], [K], and Del are legible
+- slider labels like Seed / Amount are legible
+- nothing else in layout or behavior changed
+
+---
+
+F. Final rule
+
+This is 0.6.5m only.
+styles.css only.
+Three color property changes.
+No more.

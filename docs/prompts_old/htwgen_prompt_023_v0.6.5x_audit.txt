@@ -1,0 +1,147 @@
+HTW Generator — Layer Row Extraction Boundary Audit
+
+FILE: htwgen_prompt_023_v0.6.5x_audit.txt
+
+CONTRACT ACTIVE.
+MODE: AUDIT MODE
+OUTPUT: PLAN_MIN
+
+Base:
+- current working lane is Effects
+- current cleanup priority #1 is layer row template extraction
+- this is AUDIT ONLY
+- no implementation is allowed
+
+You must treat this as the FIRST CLEANUP EXECUTION LANE.
+
+---
+
+A. Scope
+
+Audit ONLY the current layer row system in Effects.
+
+Target surface:
+- the inline layer row template inside `sbEffects()`
+- the exact `wireUI()` routes that consume the row's data attributes
+
+Do NOT widen into:
+- actions row
+- section reorder
+- .tog system broadly
+- CSS cleanup
+- keyboard shortcuts
+- geometry
+- renderSidebar lifecycle
+
+This pass is only about defining the exact extraction boundary for a future:
+`renderLayerRow(i, layer)`
+
+---
+
+B. Objective
+
+Return the extraction boundary document so that a later implementation pass can extract the layer row with zero interpretation and zero structural improvisation.
+
+Your job is to define the exact contract of the current row.
+
+---
+
+C. Required Output
+
+Return PLAN_MIN with exactly these sections:
+
+1. EXACT HTML BOUNDARY
+- copy the current layer row unit exactly, from opening tag to closing tag
+- include every class, attribute, inline style, and text node exactly as in the live file
+- do not normalize, simplify, or “clean up” the HTML in this audit
+
+2. DATA-ATTRIBUTE INVENTORY
+For every data-* attribute in the row:
+- attribute name
+- current value shape
+- which wireUI() route consumes it
+- what breaks if it changes
+
+3. INDEX DEPENDENCY
+State exactly how `i` is used:
+- display
+- routing
+- array access
+- string interpolation
+- anything else
+
+Then state the required future helper signature:
+- `renderLayerRow(i, layer)` or corrected alternative
+with reason
+
+4. TEXT NODE INVENTORY
+List every visible text node in the row:
+- current value
+- whether it is stable or historically fragile
+- whether it must remain ASCII-only in future passes
+
+5. INLINE STYLE INVENTORY
+For every inline style in the row:
+- exact style string
+- current purpose
+- whether it is safe to move later
+- whether it must remain inline during the future extraction pass
+
+Do NOT move anything yet.
+
+6. ELEMENT TYPE INVENTORY
+List every element type in the row:
+- element
+- purpose
+- whether it is load-bearing for current behavior
+- whether changing the element type in the future is high-risk or low-risk
+
+7. EXTRACTION BOUNDARY DECISION
+Decide exactly:
+- does future `renderLayerRow(...)` return the full outer row?
+- or only inner content?
+
+Make one clear decision and justify it.
+
+8. FUTURE CALLER SHAPE
+Show the exact caller pattern that the future extraction pass should use inside `sbEffects()`:
+- how the current loop works
+- what the future call will look like
+- what must remain unchanged around the call site
+
+9. RISKS OF EXTRACTION
+List the top real risks of the future extraction pass:
+- attribute drift
+- text drift
+- index mismatch
+- structural mismatch
+- handler disconnect
+- anything else real
+
+10. ONE NEXT MOVE ONLY
+State the next step after this audit.
+It must be:
+- the future extraction implementation pass
+or
+- a required correction before extraction
+but only one.
+
+---
+
+D. Constraints
+
+- No code changes
+- No implementation
+- No CSS changes
+- No handler changes
+- No normalization of markup
+- No cleanup “suggestions” outside this row
+- No redesign
+
+This is a contract-definition pass, not a coding pass.
+
+---
+
+E. Final rule
+
+The output must be precise enough that the future extraction implementation can be done as transcription, not interpretation.

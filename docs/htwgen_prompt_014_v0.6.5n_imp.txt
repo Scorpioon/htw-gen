@@ -1,0 +1,130 @@
+HTW Generator — v0.6.5n Implementation Pass
+
+FILE: htwgen_prompt_014_v0.6.5n_imp.txt
+
+CONTRACT ACTIVE.
+MODE: PATCH MODE
+OUTPUT: IMPLEMENT_MIN
+
+Base:
+- current base is v0.6.5m
+- this pass is v0.6.5n only
+- working tree only
+- no git commands
+
+---
+
+A. Scope
+
+Apply ONLY these two fixes in app.js:
+
+1. Replace the mojibake delete text node with ASCII DEL
+2. Add the missing C shortcut to the keydown switch
+
+Nothing else.
+
+---
+
+B. Hard constraints
+
+Do NOT:
+- perform renderLayerRow extraction
+- touch any helper function
+- change any HTML structure
+- change any attribute
+- change any class
+- change any inline style
+- touch CSS
+- touch wireUI()
+- touch sbEffects() except the single text node replacement
+- touch any key other than C
+- run git add / commit / push / any git command
+
+This is a micro-pass only.
+
+---
+
+C. Exact changes required
+
+1. DEL text node replacement
+Target: the delete span text node inside the current inline layer row template in sbEffects()
+
+Change ONLY the visible text node:
+- BEFORE: mojibake corrupted symbol
+- AFTER: DEL
+
+Important:
+- ASCII only
+- text-only change
+- do not change quotes
+- do not change span element
+- do not change data-layer-delete
+- do not change class="togk"
+- do not change style="cursor:pointer; margin-right:6px"
+
+2. C shortcut
+Add this exact case to the keydown switch in app.js:
+
+case 'c': case 'C':
+  if (S.mode === 'effects') { S.fx.colorMode = !S.fx.colorMode; dProc(); }
+  break;
+
+Placement:
+- directly before the existing case 'k': case 'K':
+- do not modify any other case
+
+---
+
+D. Self-check before reporting success
+
+Verify all of these:
+
+1. DEL text is ASCII
+2. No smart quotes were introduced
+3. data-layer-delete="${i}" still exists exactly
+4. class="togk" still exists exactly
+5. style="cursor:pointer; margin-right:6px" still exists exactly
+6. The new C case includes S.mode === 'effects'
+7. No other key cases changed
+8. No lines outside these two surfaces changed
+9. No git command was run
+
+If any check fails, stop and report failure.
+
+---
+
+E. Required output
+
+Return only:
+
+A. exact file list
+B. exact root cause / rationale
+C. exact edit summary
+D. exact code change
+E. self-check result
+F. validation checklist
+G. what to do next
+H. current branch
+I. committed or not
+J. pushed or not
+K. confirmation that no git commands were run
+
+---
+
+F. Validation checklist
+
+After patch:
+- Bake 1+ layer → label shows DEL, not mojibake
+- Click DEL → correct layer deleted
+- Click ON/OFF → visibility still works
+- Press C in Effects → base image color toggles
+- Press C in Icon/Bitmap → no effect
+- No layout shift
+- No console errors
+
+---
+
+G. One next move only
+
+Apply these two changes and stop.
+No extraction. No cleanup. No git.

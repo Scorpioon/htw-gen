@@ -1,0 +1,66 @@
+HTW Generator — Read/Model Prompt
+
+FILE: htwgen_prompt_017_v0.6.5m_audit.txt
+
+CONTRACT ACTIVE.
+MODE: AUDIT MODE
+OUTPUT: PLAN_MIN
+
+Current repo truth:
+- Stable base: v0.6.5k
+- Active product lane: Effects
+- This prompt is READ + MODEL only
+- No implementation is allowed
+
+You must use the file:
+- HTWGEN_LLM_WORKING_MODEL_v0.6.5k.md
+
+Goal:
+Reconstruct the local working model for the exact surface we want to touch before any patch is proposed.
+
+This is not a feature pass.
+This is not a rewrite pass.
+This is not an implementation prompt.
+
+---
+
+A. Task
+
+Read:
+1. HTWGEN_LLM_WORKING_MODEL_v0.6.5k.md
+2. the exact file/function region relevant to the requested change
+
+Then return only a local operational model of that surface.
+
+---
+
+B. Required Output
+
+Return only PLAN_MIN with this structure:
+
+A. exact files/functions read
+B. current behavior model
+C. critical invariants
+D. existing handler / id / data-attr chain
+E. smallest allowed delta
+F. risks if changed carelessly
+G. what must not be touched
+H. one next move only
+
+---
+
+C. Rules
+
+- No code
+- No implementation
+- No redesign
+- No broad audit
+- No “improvements” outside the asked surface
+- If the surface depends on existing helpers/IDs/data-attrs, name them explicitly
+- If the requested change can be done by wrapping or reordering instead of rebuilding, say so
+
+---
+
+D. Final rule
+
+Do not propose a patch until you can explain how the current surface already works.

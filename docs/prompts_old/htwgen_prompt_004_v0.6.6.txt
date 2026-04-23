@@ -1,0 +1,78 @@
+CONTRACT ACTIVE.
+
+MODE: PATCH MODE
+OUTPUT: IMPLEMENT_MIN
+
+Current repo truth:
+- Current version: v0.6.5k
+- Target version: v0.6.6
+- Workflow: direct repo touch with Claude CLI
+- Active lane: Phase 1 Icon alignment hardening
+- Scope in this pass: Commit 1 only
+
+You are now implementing ONLY Commit 1 from the approved Phase 1 Icon brief.
+
+DO NOT:
+- broaden scope
+- touch Effects
+- touch Bitmap
+- touch palette routing
+- touch state.js
+- touch version strings
+- touch cleanup items
+- touch any file other than app.js
+- combine Commit 1 with Commit 2 or Commit 3
+
+APPROVED TASK
+Fix BUG-1 only:
+Icon toggle args are swapped in sbIcon(), causing Invert and Grid overlay to always render ON and show wrong shortcut labels.
+
+TARGET FILE
+- app.js
+
+TARGET REGION
+- sbIcon() only
+
+APPROVED CHANGE
+Current broken line pattern:
+sec('OPTIONS', tog('iinv', 'Invert', 'I', ic.invert) + tog('igrid', 'Grid overlay', 'G', ic.grid))
+
+Correct it so tog() receives arguments in the correct order:
+- tog(id, label, on, key)
+
+Expected fixed form:
+- tog('iinv', 'Invert', ic.invert, 'I')
+- tog('igrid', 'Grid overlay', ic.grid, 'G')
+
+OUTPUT RULES
+Return only IMPLEMENT_MIN with this exact structure:
+
+A. exact file list
+B. exact edit summary
+C. exact code change
+D. expected visible change
+E. validation checklist
+F. what to do next
+G. current branch
+H. committed or not
+I. pushed or not
+J. commit message suggestion
+
+MANDATORY CONSTRAINTS
+- One file only
+- One change only
+- No extra cleanup
+- No version bump
+- No unrelated refactor
+- No prose essay
+- Keep it extremely tight
+
+VALIDATION TARGET
+After this change, the user must be able to verify:
+- Invert toggle renders OFF on load when false
+- Grid overlay toggle renders OFF on load when false
+- Clicking each toggle updates visual ON/OFF correctly
+- Shortcut labels show I and G correctly
+
+FINAL RULE
+This is Commit 1 only. Do not include Commit 2 or later work in any form.

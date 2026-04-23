@@ -1,0 +1,100 @@
+HTW Generator — Delete Mojibake Hotfix Prompt
+
+FILE: htwgen_prompt_016_v0.6.5m_imp.txt
+
+CONTRACT ACTIVE.
+MODE: PATCH MODE
+OUTPUT: IMPLEMENT_MIN
+
+Current repo truth:
+- Current committed base should be v0.6.5l after the confidence hotfix
+- This pass is mojibake delete-control hotfix only
+- app.js only
+- No version bump
+- No contrast pass yet
+- No actions row
+- No sidebar reorder
+- No layer scroll work
+- No geometry work
+
+---
+
+A. Scope
+
+Fix the current mojibake in the Layers delete control only.
+
+Observed problem:
+- The delete control in the layer row renders mojibake / corrupted characters
+- This is visible in the sidebar and harms demo readability
+- We want a sober, readable, tool-like label
+
+Approved target:
+- Replace the broken mojibake delete control text with plain text: Del
+
+Nothing else enters this pass.
+
+---
+
+B. Constraints
+
+Do NOT:
+- touch styles.css
+- touch wireUI()
+- touch section ordering
+- touch layer visibility toggle
+- touch button ids / data attributes
+- introduce decorative icons
+- use raw Unicode symbol replacements
+- bundle any contrast work
+- bundle any other roadmap item
+
+Keep:
+- the existing delete handler path
+- the existing row structure
+- the existing data-layer-delete attribute
+
+---
+
+C. Approved implementation intent
+
+In the layer row template inside app.js:
+- replace the mojibake delete control text only
+- preserve handler wiring exactly
+- use plain text label: Del
+
+---
+
+D. Output format
+
+Return ONLY IMPLEMENT_MIN with this exact structure:
+
+A. exact file list
+B. exact root cause / rationale
+C. exact edit summary
+D. exact code change
+E. expected visible change
+F. validation checklist
+G. what to do next
+H. current branch
+I. committed or not
+J. pushed or not
+K. commit message suggestion
+
+---
+
+E. Validation target
+
+After implementation, the user must be able to verify:
+- layer rows show Del instead of mojibake
+- clicking Del deletes the correct layer
+- visibility toggle still works
+- no other part of the sidebar changed
+
+---
+
+F. Final rule
+
+This is mojibake delete hotfix only.
+One file.
+One tiny change.
+No more.

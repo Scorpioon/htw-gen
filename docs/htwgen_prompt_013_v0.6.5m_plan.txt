@@ -1,0 +1,40 @@
+Good audit. Keep the system invariants, unsafe surfaces, safe surfaces, shortcut inventory, and wireUI routing table.
+
+Correction required:
+
+The "Next Safe Implementation Step" is too broad.
+Do NOT include renderLayerRow extraction in the next implementation step.
+
+Reason:
+we have enough evidence that direct Claude implementation on inline HTML template strings in app.js is currently unsafe on this repo surface. Repeated smart-quote corruption and fallback-layout regressions already proved this.
+
+Replace section D with this exact next step:
+
+D. Next Safe Implementation Step
+
+Apply ONLY the v0.6.5n fixes to the working tree (no commit, no git):
+
+1. Replace the mojibake delete text node with ASCII DEL
+   - text-only change
+   - no attribute change
+   - no structural change
+
+2. Add the missing C shortcut to the keydown switch
+   - effects mode guard required
+   - no other key changes
+
+Stop there.
+
+Do NOT perform renderLayerRow extraction.
+Reclassify renderLayerRow extraction from "Safe Surfaces" to:
+- MANUAL ONLY for now
+or
+- AUDIT ONLY until further notice
+
+Return only the corrected sections:
+- B. Unsafe Surfaces
+- C. Safe Surfaces
+- D. Next Safe Implementation Step
+- one next move only
+
+No implementation yet.

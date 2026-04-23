@@ -1,0 +1,79 @@
+HTW Generator — prompt_012_audit_v0.6.5l.txt
+
+CONTRACT ACTIVE.
+
+MODE: AUDIT MODE
+OUTPUT: PLAN_MIN
+
+---
+
+Your previous plan is accepted with two mandatory scope corrections.
+
+---
+
+1. REMOVE VERSION BUMP FROM THIS PLAN
+
+Do NOT include any version bump work in this pass.
+
+Do NOT touch:
+- index.html version
+- app.js version header
+- core/state.js version header
+- engines/icon-engine.js version header
+- engines/icon-editor.js version header
+
+Version bump belongs ONLY after successful implementation and validation of both lanes.
+
+---
+
+2. DO NOT MERGE LANE A AND LANE B INTO ONE IMPLEMENTATION PASS
+
+They must be treated as two separate bounded passes.
+
+Required sequencing:
+- Pass 1 = Lane A only
+- Validate Lane A
+- Pass 2 = Lane B only
+- Validate Lane B
+- Only then consider version bump
+
+Reason:
+Lane A = sidebar / tool feel / CSS / template structure
+Lane B = border / rail / noise placement math
+
+They must stay isolatable for rollback, debugging, and regression control.
+
+---
+
+3. REQUIRED OUTPUT STRUCTURE (STRICT)
+
+Return ONLY PLAN_MIN with this exact structure:
+
+A. corrected final scope
+B. Lane A only scope
+C. Lane B only scope
+D. exact file list for Lane A
+E. exact file list for Lane B
+F. exact implementation order
+G. validation order
+H. risks
+I. out-of-scope
+J. one next move only
+
+---
+
+4. FINAL RULES
+
+- No version bump in this plan
+- No combined one-pass implementation
+- Lane A first, Lane B second
+- Do NOT redesign logic
+- Do NOT expand scope
+- Maintain strict patch discipline
+
+---
+
+State: Previous plan structurally valid but over-scoped.
+Delta: Scope corrected into two isolated passes (UI vs placement).
+Next move: Produce corrected PLAN_MIN with proper sequencing.
+Dangers: Scope bleed between UI and engine logic, premature version bump, non-isolated changes.

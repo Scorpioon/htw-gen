@@ -1,0 +1,103 @@
+HTW Generator — Implementation Prompt
+
+FILE: htwgen_prompt_015_v0.6.5l_imp.txt
+
+CONTRACT ACTIVE.
+MODE: PATCH MODE
+OUTPUT: IMPLEMENT_MIN
+
+Current repo truth:
+- Current version: v0.6.5k
+- Target version for this pass: v0.6.5l
+- Roadmap audit approved
+- This pass is 0.6.5l only
+- app.js only
+- No version bump
+- No sidebar reorder
+- No CSS changes
+- No other roadmap items
+
+---
+
+A. Scope
+
+Implement ONLY the 0.6.5l confidence hotfix pass:
+
+1. EFX-2 — visible export feedback for Effects export
+2. EFX-3 — preserve sidebar scroll position across sidebar rebuild
+
+Nothing else enters this pass.
+
+---
+
+B. Constraints
+
+Do NOT:
+- touch styles.css
+- touch sbEffects()
+- touch drawMarkers()
+- touch drawNoise()
+- touch wireUI()
+- touch state.js
+- touch export sizing logic
+- touch Icon or Bitmap
+- touch version strings
+- bundle any future roadmap item
+
+Keep this pass as two minimal app.js changes only.
+
+---
+
+C. Approved implementation intent
+
+EFX-2:
+- In the Effects export path, after successful blob creation / download trigger, add visible user feedback so export no longer appears silent.
+
+EFX-3:
+- In renderSidebar(), preserve sidebar scrollTop across the rebuild cycle.
+- Important: wireUI() replaces the sidebar node, so any pre-wireUI sidebar reference becomes stale.
+- Save scrollTop before rebuild.
+- Re-query the live sidebar after wireUI() completes, then restore scrollTop.
+
+---
+
+D. Output format
+
+Return ONLY IMPLEMENT_MIN with this exact structure:
+
+A. exact file list
+B. exact root cause / rationale
+C. exact edit summary
+D. exact code change
+E. expected visible change
+F. validation checklist
+G. what to do next
+H. current branch
+I. committed or not
+J. pushed or not
+K. commit message suggestion
+
+---
+
+E. Validation target
+
+After implementation, the user must be able to verify:
+
+EFX-2
+- Export PNG in Effects gives visible feedback
+- It no longer feels like “nothing happened”
+- No duplicate-click confusion
+
+EFX-3
+- Scroll the sidebar downward
+- Bake / apply a layer
+- Sidebar remains at the same scroll position
+- No jump back to top
+
+---
+
+F. Final rule
+
+This is 0.6.5l only.
+Two small app.js edits.
+No more.
