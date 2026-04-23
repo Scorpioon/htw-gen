@@ -796,7 +796,7 @@ function sbEffects() {
       const layer = S.bakeStack[i];
       layersHtml += `<div class="tog" style="padding-left:4px" data-layer="${i}" data-layer-visible="${i}">
         <span class="togl">Layer ${i + 1}</span>
-        <span class="togk" data-layer-delete="${i}" style="cursor:pointer; margin-right:6px">Ã¢Å“â€¢</span>
+        <span class="togk" data-layer-delete="${i}" style="cursor:pointer; margin-right:6px">[BORRAR]</span>
         <div class="togp${layer.visible ? ' on' : ''}" data-layer-visible="${i}">${layer.visible ? 'ON' : 'OFF'}</div>
       </div>`;
     }
