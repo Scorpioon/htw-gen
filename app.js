@@ -959,6 +959,7 @@ document.addEventListener('keydown', e => {
     case 'ArrowUp': if (S.mode === 'icon') { S.icon.thr = Math.min(255, S.icon.thr + 2); dProc(); } break;
     case 'ArrowDown': if (S.mode === 'icon') { S.icon.thr = Math.max(0, S.icon.thr - 2); dProc(); } break;
     case 'n': case 'N': if (S.mode === 'effects') { S.fx.seed = Math.floor(Math.random() * 9999); dProc(); } break;
+    case 'c': case 'C': if (S.mode === 'effects') { S.fx.colorMode = !S.fx.colorMode; dProc(); } break;
     case 'k': case 'K': if (S.mode === 'effects') { S.fx.checker = !S.fx.checker; dProc(); } break;
     case 'j': case 'J': if (S.mode === 'effects') { S.fx.edgeMode = S.fx.edgeMode === 'none' ? 'border' : S.fx.edgeMode === 'border' ? 'rail1' : 'none'; dProc(); } break;
   }
